@@ -239,7 +239,7 @@ export async function renderLayout(layout: LayoutId, photos: string[]): Promise<
 }
 
 export const LAYOUTS = [
-  { id: "A" as const, label: "แบ่งให้เพื่อน", emoji: "✂️", desc: "ได้ 2 แถบ ตัดแบ่งกับเพื่อนได้เลย", needsCount: 3 },
+  { id: "A" as const, label: "แบ่งให้เพื่อน", emoji: "✂️", desc: "2 แถบเหมือนกัน ตัดแบ่งเก็บกับให้เพื่อน", needsCount: 4 },
   { id: "B" as const, label: "เต็มแผ่น 4x6", emoji: "⭐", desc: "คอลลาจ 4 รูปในแผ่นเดียว", recommended: true, needsCount: 4 },
   { id: "C" as const, label: "ฟิล์มสตริป", emoji: "🎞️", desc: "สไตล์ตู้โฟโต้บูธคลาสสิก", needsCount: 4 },
 ];
