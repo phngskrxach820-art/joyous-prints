@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle2, Loader2, Printer, Sparkles, Star } from "lucid
 import { CaptureFlow } from "@/components/CaptureFlow";
 import { LAYOUTS, renderLayout, renderLayoutD, type LayoutId } from "@/lib/composer";
 import { loadConfig } from "@/lib/admin-config";
+import { paymentSuccess } from "@/lib/audio";
 import QRCode from "qrcode";
 
 export const Route = createFileRoute("/session/$id")({
