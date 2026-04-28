@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Loader2, Download, Printer, Sparkles, Star } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Printer, Sparkles, Star } from "lucide-react";
 import { CaptureFlow } from "@/components/CaptureFlow";
-import { LAYOUTS, renderLayout, type LayoutId } from "@/lib/composer";
+import { LAYOUTS, renderLayout, renderLayoutD, type LayoutId } from "@/lib/composer";
 import { loadConfig } from "@/lib/admin-config";
 import QRCode from "qrcode";
 
@@ -18,21 +18,20 @@ function SessionPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("capture");
-  const [photoBlobs, setPhotoBlobs] = useState<Blob[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [layout, setLayout] = useState<LayoutId>("B");
   const [confirming, setConfirming] = useState(false);
   const [paid, setPaid] = useState(false);
-  const [outputUrl, setOutputUrl] = useState<string>("");
-  const [downloadQr, setDownloadQr] = useState<string>("");
+  const [photoOutputUrl, setPhotoOutputUrl] = useState<string>("");
+  const [gifOutputUrl, setGifOutputUrl] = useState<string>("");
+  const [photoQr, setPhotoQr] = useState<string>("");
+  const [gifQr, setGifQr] = useState<string>("");
   const [printOpen, setPrintOpen] = useState(false);
 
   const cfg = typeof window !== "undefined" ? loadConfig() : null;
-  const price = cfg?.price ?? 50;
+  const price = cfg?.price ?? 69;
 
-  // After capture: upload to storage
   async function handleCaptured(blobs: Blob[]) {
-    setPhotoBlobs(blobs);
     setStep("uploading");
     try {
       const urls: string[] = [];
@@ -62,46 +61,68 @@ function SessionPage() {
     setStep("payment");
   }
 
-  async function confirmPayment() {
-    setConfirming(true);
-    // Mark in DB; simulate verification 10s
-    await supabase.from("sessions").update({ payment_status: "checking" }).eq("id", id);
-    setTimeout(async () => {
-      await supabase.from("sessions").update({ payment_status: "paid" }).eq("id", id);
-      setPaid(true);
-      setTimeout(() => {
-        setStep("rendering");
-        renderAndProceed();
-      }, 1500);
-    }, 10000);
-  }
-
-  async function renderAndProceed() {
-    try {
-      const blob = await renderLayout(layout, photoUrls);
-      const ext = layout === "D" ? "gif" : "jpg";
-      const ct = layout === "D" ? "image/gif" : "image/jpeg";
-      const path = `${id}/output-${layout}.${ext}`;
+  // Background: render+upload BOTH the JPEG collage and the GIF in parallel.
+  async function backgroundRender(l: LayoutId, urls: string[]) {
+    const photoTask = (async () => {
+      const blob = await renderLayout(l, urls);
+      const path = `${id}/output-photo.jpg`;
       const { error } = await supabase.storage.from("photos").upload(path, blob, {
-        contentType: ct,
+        contentType: "image/jpeg",
         upsert: true,
       });
       if (error) throw error;
       const { data } = supabase.storage.from("photos").getPublicUrl(path);
-      await supabase.from("sessions").update({ output_url: data.publicUrl }).eq("id", id);
-      setOutputUrl(data.publicUrl);
-
-      const downloadUrl = `${window.location.origin}/download/${id}`;
-      const qr = await QRCode.toDataURL(downloadUrl, { margin: 1, width: 320 });
-      setDownloadQr(qr);
-      setStep("delivery");
-    } catch (e) {
-      console.error(e);
-      toast.error("สร้างรูปไม่สำเร็จ");
-    }
+      return data.publicUrl;
+    })();
+    const gifTask = (async () => {
+      const blob = await renderLayoutD(urls);
+      const path = `${id}/output-gif.gif`;
+      const { error } = await supabase.storage.from("photos").upload(path, blob, {
+        contentType: "image/gif",
+        upsert: true,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from("photos").getPublicUrl(path);
+      return data.publicUrl;
+    })();
+    return Promise.all([photoTask, gifTask]);
   }
 
-  // Print modal
+  async function confirmPayment() {
+    setConfirming(true);
+    await supabase.from("sessions").update({ payment_status: "checking" }).eq("id", id);
+
+    // Kick off render in background while the 10s "verifying" UX runs.
+    const renderPromise = backgroundRender(layout, photoUrls).catch((e) => {
+      console.error("render failed", e);
+      return null;
+    });
+
+    setTimeout(async () => {
+      await supabase.from("sessions").update({ payment_status: "paid" }).eq("id", id);
+      setPaid(true);
+      setStep("rendering");
+      const result = await renderPromise;
+      if (!result) {
+        toast.error("สร้างรูปไม่สำเร็จ");
+        return;
+      }
+      const [photoUrl, gifUrl] = result;
+      setPhotoOutputUrl(photoUrl);
+      setGifOutputUrl(gifUrl);
+      await supabase.from("sessions").update({ output_url: photoUrl }).eq("id", id);
+
+      const origin = window.location.origin;
+      const [pq, gq] = await Promise.all([
+        QRCode.toDataURL(`${origin}/d/${id}/photo`, { margin: 1, width: 360, errorCorrectionLevel: "H" }),
+        QRCode.toDataURL(`${origin}/d/${id}/gif`, { margin: 1, width: 360, errorCorrectionLevel: "H" }),
+      ]);
+      setPhotoQr(pq);
+      setGifQr(gq);
+      setStep("delivery");
+    }, 10000);
+  }
+
   function openPrint() {
     setPrintOpen(true);
   }
@@ -116,7 +137,7 @@ function SessionPage() {
         body { margin: 0; }
         img { width: 100%; height: 100%; object-fit: contain; display: block; }
       </style>
-      </head><body><img src="${outputUrl}" onload="window.print(); setTimeout(() => window.close(), 500)"/></body></html>
+      </head><body><img src="${photoOutputUrl}" onload="window.print(); setTimeout(() => window.close(), 500)"/></body></html>
     `);
     w.document.close();
     setPrintOpen(false);
@@ -140,7 +161,8 @@ function SessionPage() {
       {step === "format" && (
         <section className="animate-fade-in">
           <h2 className="text-3xl md:text-4xl font-heading font-bold mb-2">อยากได้แบบไหน?</h2>
-          <p className="text-muted-foreground mb-8">เลือก 1 แบบจาก 4 ฟอร์แมต</p>
+          <p className="text-muted-foreground mb-2">เลือกฟอร์แมตสำหรับปริ้นท์</p>
+          <p className="text-sm text-muted-foreground mb-8">✨ ทุกแบบจะได้ GIF เคลื่อนไหวแถมไปด้วยฟรี!</p>
 
           <div className="grid sm:grid-cols-2 gap-4 mb-8">
             {LAYOUTS.map((l) => (
@@ -153,7 +175,7 @@ function SessionPage() {
                     : "border-border hover:border-primary/50"
                 }`}
               >
-                {l.recommended && (
+                {"recommended" in l && l.recommended && (
                   <div className="absolute -top-3 right-4 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1">
                     <Star className="h-3 w-3" /> แนะนำ
                   </div>
@@ -164,9 +186,6 @@ function SessionPage() {
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">{l.desc}</p>
                 <FormatPreview id={l.id} photos={photoUrls} />
-                {l.digitalOnly && (
-                  <p className="mt-3 text-xs text-secondary">* เซฟไฟล์อย่างเดียว ไม่ปริ้นท์</p>
-                )}
               </button>
             ))}
           </div>
@@ -186,7 +205,7 @@ function SessionPage() {
           <p className="text-muted-foreground mb-6">PromptPay รับทุกธนาคาร</p>
 
           <div className="bg-white p-4 rounded-3xl inline-block shadow-2xl mb-6">
-            <img src="/qr-payment.png" alt="PromptPay QR" className="w-[280px] max-w-full" onError={(e) => { (e.target as HTMLImageElement).src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect width='200' height='200' fill='%23f0f0f0'/><text x='100' y='100' text-anchor='middle' fill='%23999' font-size='14'>อัปโหลด /public/qr-payment.png</text></svg>"; }} />
+            <img src="/qr-payment.png" alt="PromptPay QR" className="w-[280px] max-w-full" />
           </div>
 
           <p className="font-bold text-xl">นาย พงศกร อาจหาญ</p>
@@ -229,38 +248,49 @@ function SessionPage() {
           {/* Output preview */}
           <div className="flex justify-center mb-8">
             <div className="bg-card p-3 rounded-2xl shadow-2xl max-w-md">
-              <img src={outputUrl} alt="output" className="w-full rounded-xl" />
+              <img src={photoOutputUrl} alt="output" className="w-full rounded-xl" />
             </div>
           </div>
 
-          {layout === "D" ? (
-            <div className="max-w-md mx-auto p-6 rounded-3xl border border-border bg-card text-center">
-              <p className="text-2xl mb-3">✨</p>
-              <h3 className="font-heading font-bold text-xl mb-3">เซฟ GIF ลงมือถือ</h3>
-              <p className="text-sm text-muted-foreground mb-4">สแกนเลย</p>
-              {downloadQr && <img src={downloadQr} alt="qr" className="w-44 mx-auto rounded-xl" />}
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-5 max-w-2xl mx-auto">
-              <div className="p-6 rounded-3xl border border-border bg-card text-center">
-                <p className="text-2xl mb-2">📲</p>
-                <h3 className="font-heading font-bold text-lg mb-3">เซฟลงมือถือ</h3>
-                <p className="text-xs text-muted-foreground mb-3">สแกน QR ด้วยมือถือ</p>
-                {downloadQr && <img src={downloadQr} alt="qr" className="w-40 mx-auto rounded-xl" />}
+          {/* Print section (top) */}
+          <div className="max-w-md mx-auto mb-8 p-6 rounded-3xl border border-border bg-card text-center">
+            <p className="text-2xl mb-2">🖨️</p>
+            <h3 className="font-heading font-bold text-lg mb-3">ปริ้นท์รับเลย</h3>
+            <button
+              onClick={openPrint}
+              className="w-full h-12 rounded-full bg-primary text-primary-foreground font-semibold hover:scale-[1.02] transition inline-flex items-center justify-center gap-2"
+            >
+              <Printer className="h-4 w-4" /> ปริ้นท์รับเลย 🖨️
+            </button>
+          </div>
+
+          {/* Scan to save section (bottom) */}
+          <div className="max-w-2xl mx-auto">
+            <h3 className="text-center font-heading font-bold text-xl mb-5">📲 สแกนเซฟลงมือถือ</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-3xl border border-border bg-card text-center">
+                <p className="font-heading font-bold mb-3">📸 เซฟรูปนิ่ง</p>
+                {photoQr && (
+                  <div className="bg-white p-2 rounded-xl inline-block">
+                    <img src={photoQr} alt="QR เซฟรูป" className="w-[200px] h-[200px] block" />
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-3">สแกนรับรูป JPEG</p>
               </div>
-              <div className="p-6 rounded-3xl border border-border bg-card text-center flex flex-col">
-                <p className="text-2xl mb-2">🖨️</p>
-                <h3 className="font-heading font-bold text-lg mb-3">ปริ้นท์รับเลย</h3>
-                <p className="text-xs text-muted-foreground mb-4 flex-1">ดูตัวอย่างก่อนแล้วค่อยปริ้นท์</p>
-                <button
-                  onClick={openPrint}
-                  className="h-12 rounded-full bg-primary text-primary-foreground font-semibold hover:scale-[1.02] transition inline-flex items-center justify-center gap-2"
-                >
-                  <Printer className="h-4 w-4" /> ปริ้นท์รับเลย 🖨️
-                </button>
+              <div className="p-4 rounded-3xl border border-border bg-card text-center">
+                <p className="font-heading font-bold mb-3">✨ เซฟ GIF</p>
+                {gifQr && (
+                  <div className="bg-white p-2 rounded-xl inline-block">
+                    <img src={gifQr} alt="QR เซฟ GIF" className="w-[200px] h-[200px] block" />
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-3">สแกนรับ GIF เคลื่อนไหว</p>
               </div>
             </div>
-          )}
+            <p className="text-center text-muted-foreground mt-4" style={{ fontSize: 12 }}>
+              ลิงก์นี้ใช้ได้ 24 ชั่วโมง
+            </p>
+          </div>
 
           <button
             onClick={() => navigate({ to: "/" })}
@@ -269,12 +299,14 @@ function SessionPage() {
             จบ session
           </button>
 
+          {gifOutputUrl && <link rel="prefetch" href={gifOutputUrl} />}
+
           {/* Print preview modal */}
           {printOpen && (
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur flex items-center justify-center p-4 animate-fade-in">
               <div className="bg-card max-w-2xl w-full rounded-3xl p-6 shadow-2xl">
                 <h3 className="font-heading font-bold text-xl mb-4">ตัวอย่างก่อนปริ้นท์</h3>
-                <img src={outputUrl} alt="preview" className="w-full rounded-xl mb-4 border border-border" />
+                <img src={photoOutputUrl} alt="preview" className="w-full rounded-xl mb-4 border border-border" />
                 <p className="text-xs text-muted-foreground mb-4">
                   4×6 นิ้ว · 300 DPI · {cfg?.printOrientation === "portrait" ? "แนวตั้ง" : "แนวนอน"}
                 </p>
@@ -283,7 +315,7 @@ function SessionPage() {
                     onClick={() => setPrintOpen(false)}
                     className="flex-1 h-12 rounded-full border border-border font-semibold"
                   >
-                    ยกเลิก
+                    ← กลับ
                   </button>
                   <button
                     onClick={doPrint}
@@ -329,32 +361,14 @@ function FormatPreview({ id, photos }: { id: LayoutId; photos: string[] }) {
       </div>
     );
   }
-  if (id === "C") {
-    return (
-      <div className="aspect-[2/3] mx-auto w-1/2 bg-white rounded-xl p-1 flex flex-col gap-1">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="flex-1 bg-muted overflow-hidden rounded">
-            {p(i) && <img src={p(i)} alt="" className="w-full h-full object-cover" />}
-          </div>
-        ))}
-      </div>
-    );
-  }
-  // D — animated cycle
+  // C
   return (
-    <div className="aspect-square bg-black rounded-xl overflow-hidden relative">
-      {photos.slice(0, 4).map((src, i) => (
-        <img
-          key={i}
-          src={src}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{
-            animation: `gifCycle 0.6s steps(1) ${i * 0.15}s infinite`,
-          }}
-        />
+    <div className="aspect-[2/3] mx-auto w-1/2 bg-white rounded-xl p-1 flex flex-col gap-1">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="flex-1 bg-muted overflow-hidden rounded">
+          {p(i) && <img src={p(i)} alt="" className="w-full h-full object-cover" />}
+        </div>
       ))}
-      <style>{`@keyframes gifCycle { 0%, 25% { opacity: 1; } 26%, 100% { opacity: 0; } }`}</style>
     </div>
   );
 }

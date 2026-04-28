@@ -14,7 +14,7 @@ export type AdminConfig = {
 
 export const defaults: AdminConfig = {
   pin: "1234",
-  price: 50,
+  price: 69,
   watermark: "เฮงที่ชอบพกกล้องมาวิทยาลัย",
   theme: "film-grain",
   printOrientation: "landscape",
