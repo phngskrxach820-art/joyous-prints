@@ -220,14 +220,14 @@ export function CaptureFlow({ onComplete, totalShots = 4 }: Props) {
                 <img key={i} src={src} className="rounded-xl shadow-lg w-full aspect-video object-cover" alt={`shot ${i + 1}`} />
               ))}
             </div>
-            <p className="text-2xl font-bold text-white">ได้ครบ 4 รูปแล้ว! 🎉</p>
+            <p className="text-2xl font-bold text-white">ได้ครบ {totalShots} รูปแล้ว! 🎉</p>
           </div>
         )}
       </div>
 
       {/* Thumbnail strip below */}
       <div className="mt-6 flex gap-3">
-        {[0, 1, 2, 3].map((i) => (
+        {Array.from({ length: totalShots }, (_, i) => i).map((i) => (
           <div
             key={i}
             className={`w-16 h-12 rounded-lg border-2 overflow-hidden ${
