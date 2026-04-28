@@ -1,0 +1,25 @@
+// Web Audio tick / shutter beep
+let ctx: AudioContext | null = null;
+
+function getCtx() {
+  if (typeof window === "undefined") return null;
+  if (!ctx) ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+  return ctx;
+}
+
+export function beep(freq: number, duration = 0.08, gain = 0.15) {
+  const ac = getCtx();
+  if (!ac) return;
+  const osc = ac.createOscillator();
+  const g = ac.createGain();
+  osc.frequency.value = freq;
+  osc.type = "sine";
+  g.gain.setValueAtTime(gain, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
+  osc.connect(g).connect(ac.destination);
+  osc.start();
+  osc.stop(ac.currentTime + duration);
+}
+
+export const tick = () => beep(800, 0.06);
+export const shutter = () => beep(1200, 0.12, 0.2);
