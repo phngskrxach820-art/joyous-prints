@@ -1,4 +1,5 @@
 import { ArrowLeft, Camera, Sparkles, QrCode } from "lucide-react";
+import thaiQrIcon from "@/assets/icon-thaiqr.png";
 
 type Props = {
   onBack: () => void;
@@ -33,14 +34,12 @@ const steps = [
     title: "สแกน QR จ่าย แล้วรับรูปได้เลย",
     body: "จ่ายผ่าน PromptPay ได้ทุกธนาคาร รับรูปลงมือถือหรือปริ้นท์รับได้เลย",
     visual: (
-      <div className="aspect-square w-full rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-        <div className="bg-white p-4 rounded-2xl shadow-lg">
-          <div className="w-24 h-24 grid grid-cols-6 gap-px">
-            {Array.from({ length: 36 }).map((_, i) => (
-              <div key={i} className={`${Math.random() > 0.5 ? "bg-black" : "bg-white"}`} />
-            ))}
-          </div>
-        </div>
+      <div className="aspect-square w-full rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center p-6">
+        <img
+          src={thaiQrIcon}
+          alt="Thai QR PromptPay"
+          className="w-3/4 h-3/4 object-contain drop-shadow-xl"
+        />
       </div>
     ),
   },
