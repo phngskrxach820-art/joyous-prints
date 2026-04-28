@@ -339,16 +339,19 @@ function FormatPreview({ id, photos }: { id: LayoutId; photos: string[] }) {
   const p = (i: number) => photos[i] ?? "";
   if (id === "A") {
     return (
-      <div className="aspect-[3/2] bg-black rounded-xl p-1 flex gap-1">
+      <div className="aspect-[2/3] mx-auto w-2/3 bg-white rounded-xl p-1 flex gap-1 relative">
         {[0, 1].map((s) => (
-          <div key={s} className="flex-1 grid grid-rows-3 gap-0.5">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="bg-muted overflow-hidden rounded">
+          <div key={s} className="flex-1 bg-slate-900 rounded p-1 flex flex-col gap-0.5">
+            <div className="h-4 bg-slate-700 rounded-sm mb-0.5" />
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="flex-1 bg-muted overflow-hidden rounded-sm">
                 {p(i) && <img src={p(i)} alt="" className="w-full h-full object-cover" />}
               </div>
             ))}
+            <div className="h-3 bg-slate-700 rounded-sm mt-0.5" />
           </div>
         ))}
+        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l border-dashed border-slate-400" />
       </div>
     );
   }
