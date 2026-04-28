@@ -151,7 +151,12 @@ function SessionPage() {
         <ArrowLeft className="h-4 w-4" /> หน้าแรก
       </Link>
 
-      {step === "capture" && <CaptureFlow onComplete={handleCaptured} />}
+      {step === "capture" && (
+        <CaptureFlow
+          totalShots={LAYOUTS.find((l) => l.id === layout)?.needsCount ?? 4}
+          onComplete={handleCaptured}
+        />
+      )}
 
       {step === "uploading" && (
         <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
