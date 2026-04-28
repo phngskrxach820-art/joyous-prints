@@ -46,6 +46,26 @@ function watermark(ctx: CanvasRenderingContext2D, x: number, y: number, align: C
   ctx.restore();
 }
 
+async function loadFrame(): Promise<HTMLImageElement | null> {
+  // Try the canonical admin upload path first, then legacy fallback
+  const candidates = ["/frames/frame_default.png", "/frame_default.png"];
+  for (const src of candidates) {
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.crossOrigin = "anonymous";
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = src;
+      });
+      return img;
+    } catch {
+      // try next
+    }
+  }
+  return null;
+}
+
 /** Layout A — แบ่งให้เพื่อน — 1240x1844 portrait, 2 identical strips side by side, cut line in middle */
 export async function renderLayoutA(photos: string[]): Promise<Blob> {
   const canvas = document.createElement("canvas");
@@ -53,19 +73,12 @@ export async function renderLayoutA(photos: string[]): Promise<Blob> {
   canvas.height = 1844;
   const ctx = canvas.getContext("2d")!;
 
-  // White background outside strips
+  // 1. White background
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, 1240, 1844);
 
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
-
-  // Optional frame overlay (600x1844 per strip)
-  let frame: HTMLImageElement | null = null;
-  try {
-    frame = await loadImg("/frame_default.png");
-  } catch {
-    frame = null;
-  }
+  const frame = await loadFrame();
 
   // Photo area inside each strip — leaves room for header logo + bottom badge
   const HEADER_H = 220;
@@ -76,23 +89,21 @@ export async function renderLayoutA(photos: string[]): Promise<Blob> {
   const slotGap = 12;
   const slotH = (photoArea - slotGap * 3) / 4;
 
-  // Draw a single strip (photos behind, frame on top)
-  function drawStrip(xOffset: number, stripW: number) {
-    // Strip background (subtle dark behind photos to show through any frame transparency)
-    ctx.fillStyle = "#111111";
-    ctx.fillRect(xOffset, 0, stripW, 1844);
-
-    // 4 photos stacked
+  function drawStripPhotos(xOffset: number, stripW: number) {
     for (let i = 0; i < 4; i++) {
       const y = photoTop + i * (slotH + slotGap);
       drawCover(ctx, imgs[i % imgs.length], xOffset + 20, y, stripW - 40, slotH);
     }
+  }
 
-    // Frame overlay on top
-    if (frame) {
-      ctx.drawImage(frame, xOffset, 0, stripW, 1844);
-    } else {
-      // Fallback: draw simple branded header + footer placeholders so output still looks intentional
+  // 2 + 3. Photos for both strips
+  drawStripPhotos(0, 600);
+  drawStripPhotos(640, 600);
+
+  // Branded fallback header/footer if no frame uploaded
+  if (!frame) {
+    for (const xOffset of [0, 640]) {
+      const stripW = 600;
       ctx.fillStyle = "rgba(20,30,70,0.95)";
       ctx.fillRect(xOffset + 20, 30, stripW - 40, HEADER_H - 50);
       ctx.fillStyle = "#FFFFFF";
@@ -102,8 +113,6 @@ export async function renderLayoutA(photos: string[]): Promise<Blob> {
       ctx.fillText("PHOTOBOOTH BY HENG", xOffset + stripW / 2, 30 + (HEADER_H - 50) / 2 - 18);
       ctx.font = "bold 22px 'Noto Sans Thai', sans-serif";
       ctx.fillText("เฮงที่ชอบพกกล้องมาวิทยาลัย", xOffset + stripW / 2, 30 + (HEADER_H - 50) / 2 + 16);
-
-      // bottom badge
       ctx.fillStyle = "rgba(20,30,70,0.9)";
       ctx.fillRect(xOffset + 20, 1844 - FOOTER_H + 30, stripW - 40, FOOTER_H - 60);
       ctx.fillStyle = "#FFFFFF";
@@ -112,25 +121,29 @@ export async function renderLayoutA(photos: string[]): Promise<Blob> {
     }
   }
 
-  drawStrip(0, 600);
-  drawStrip(640, 600);
-
-  // Center cut line — dashed white with scissors icon
+  // 4. Cut line
   ctx.save();
-  ctx.strokeStyle = "rgba(150,150,150,0.9)";
   ctx.setLineDash([10, 8]);
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "#AAAAAA";
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(620, 0);
   ctx.lineTo(620, 1844);
   ctx.stroke();
   ctx.restore();
-  // Scissors icon at top
-  ctx.font = "28px sans-serif";
+
+  // 5. Frame LAST, on top of photos (transparent PNG reveals photos underneath)
+  if (frame) {
+    ctx.drawImage(frame, 0, 0, 600, 1844);
+    ctx.drawImage(frame, 640, 0, 600, 1844);
+  }
+
+  // 6. Scissors icon at top of cut line
+  ctx.font = "20px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillStyle = "rgba(80,80,80,0.95)";
-  ctx.fillText("✂️", 620, 6);
+  ctx.fillText("✂️", 620, 8);
 
   return canvasToBlob(canvas);
 }
