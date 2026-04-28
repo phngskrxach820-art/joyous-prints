@@ -23,3 +23,10 @@ export function beep(freq: number, duration = 0.08, gain = 0.15) {
 
 export const tick = () => beep(800, 0.06);
 export const shutter = () => beep(1200, 0.12, 0.2);
+
+// Cheerful "payment received" chime — ascending C-E-G-C arpeggio
+export function paymentSuccess() {
+  const notes = [523.25, 659.25, 783.99, 1046.5];
+  notes.forEach((f, i) => setTimeout(() => beep(f, 0.18, 0.22), i * 110));
+}
+
