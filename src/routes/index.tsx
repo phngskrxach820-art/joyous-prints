@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Instructions } from "@/components/Instructions";
 import { Camera } from "lucide-react";
+import { click } from "@/lib/audio";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -58,7 +59,7 @@ function Home() {
         </h1>
 
         <button
-          onClick={() => setView("instructions")}
+          onClick={() => { click(); setView("instructions"); }}
           disabled={loading}
           className="h-16 px-12 rounded-full bg-primary text-primary-foreground font-semibold text-lg shadow-xl hover:scale-[1.03] transition-transform disabled:opacity-60"
         >

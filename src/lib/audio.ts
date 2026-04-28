@@ -23,6 +23,7 @@ export function beep(freq: number, duration = 0.08, gain = 0.15) {
 
 export const tick = () => beep(800, 0.06);
 export const shutter = () => beep(1200, 0.12, 0.2);
+export const click = () => beep(600, 0.05, 0.12);
 
 // Cheerful "payment received" chime — ascending C-E-G-C arpeggio
 export function paymentSuccess() {

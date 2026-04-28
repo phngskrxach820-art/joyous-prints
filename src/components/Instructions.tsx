@@ -1,5 +1,6 @@
 import { ArrowLeft, Camera, Sparkles, QrCode } from "lucide-react";
 import thaiQrIcon from "@/assets/icon-thaiqr.png";
+import { click } from "@/lib/audio";
 
 type Props = {
   onBack: () => void;
@@ -88,7 +89,7 @@ export function Instructions({ onBack, onContinue }: Props) {
 
       <div className="flex justify-center">
         <button
-          onClick={onContinue}
+          onClick={() => { click(); onContinue(); }}
           className="h-16 px-12 rounded-full font-semibold text-lg shadow-xl hover:scale-[1.03] transition-transform"
           style={{ background: "#D4A853", color: "#000" }}
         >
