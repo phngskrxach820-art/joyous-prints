@@ -46,41 +46,92 @@ function watermark(ctx: CanvasRenderingContext2D, x: number, y: number, align: C
   ctx.restore();
 }
 
-/** Layout A — แบ่งให้เพื่อน — 1844x1240 landscape, 2 mirrored strips of 3 photos */
+/** Layout A — แบ่งให้เพื่อน — 1240x1844 portrait, 2 identical strips side by side, cut line in middle */
 export async function renderLayoutA(photos: string[]): Promise<Blob> {
   const canvas = document.createElement("canvas");
-  canvas.width = 1844;
-  canvas.height = 1240;
+  canvas.width = 1240;
+  canvas.height = 1844;
   const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#111111";
-  ctx.fillRect(0, 0, 1844, 1240);
 
-  const imgs = await Promise.all(photos.slice(0, 3).map(loadImg));
+  // White background outside strips
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, 1240, 1844);
 
-  for (let strip = 0; strip < 2; strip++) {
-    const xOffset = strip === 0 ? 0 : 942;
-    drawCover(ctx, imgs[0], xOffset + 20, 20, 862, 370);
-    drawCover(ctx, imgs[1], xOffset + 20, 410, 862, 370);
-    drawCover(ctx, imgs[2], xOffset + 20, 800, 862, 370);
+  const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
+
+  // Optional frame overlay (600x1844 per strip)
+  let frame: HTMLImageElement | null = null;
+  try {
+    frame = await loadImg("/frame_default.png");
+  } catch {
+    frame = null;
   }
 
-  // Cut line — dashed
+  // Photo area inside each strip — leaves room for header logo + bottom badge
+  const HEADER_H = 220;
+  const FOOTER_H = 180;
+  const photoTop = HEADER_H;
+  const photoBottom = 1844 - FOOTER_H;
+  const photoArea = photoBottom - photoTop;
+  const slotGap = 12;
+  const slotH = (photoArea - slotGap * 3) / 4;
+
+  // Draw a single strip (photos behind, frame on top)
+  function drawStrip(xOffset: number, stripW: number) {
+    // Strip background (subtle dark behind photos to show through any frame transparency)
+    ctx.fillStyle = "#111111";
+    ctx.fillRect(xOffset, 0, stripW, 1844);
+
+    // 4 photos stacked
+    for (let i = 0; i < 4; i++) {
+      const y = photoTop + i * (slotH + slotGap);
+      drawCover(ctx, imgs[i % imgs.length], xOffset + 20, y, stripW - 40, slotH);
+    }
+
+    // Frame overlay on top
+    if (frame) {
+      ctx.drawImage(frame, xOffset, 0, stripW, 1844);
+    } else {
+      // Fallback: draw simple branded header + footer placeholders so output still looks intentional
+      ctx.fillStyle = "rgba(20,30,70,0.95)";
+      ctx.fillRect(xOffset + 20, 30, stripW - 40, HEADER_H - 50);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 26px 'Noto Sans Thai', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("PHOTOBOOTH BY HENG", xOffset + stripW / 2, 30 + (HEADER_H - 50) / 2 - 18);
+      ctx.font = "bold 22px 'Noto Sans Thai', sans-serif";
+      ctx.fillText("เฮงที่ชอบพกกล้องมาวิทยาลัย", xOffset + stripW / 2, 30 + (HEADER_H - 50) / 2 + 16);
+
+      // bottom badge
+      ctx.fillStyle = "rgba(20,30,70,0.9)";
+      ctx.fillRect(xOffset + 20, 1844 - FOOTER_H + 30, stripW - 40, FOOTER_H - 60);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "500 18px 'Noto Sans Thai', sans-serif";
+      ctx.fillText("HENG'S PHOTO BOOTH · IG: HENGSPHOTO", xOffset + stripW / 2, 1844 - FOOTER_H / 2);
+    }
+  }
+
+  drawStrip(0, 600);
+  drawStrip(640, 600);
+
+  // Center cut line — dashed white with scissors icon
   ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.strokeStyle = "rgba(150,150,150,0.9)";
   ctx.setLineDash([10, 8]);
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(922, 0);
-  ctx.lineTo(922, 1240);
+  ctx.moveTo(620, 0);
+  ctx.lineTo(620, 1844);
   ctx.stroke();
   ctx.restore();
-  // Scissors icon
+  // Scissors icon at top
   ctx.font = "28px sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
   ctx.textAlign = "center";
-  ctx.fillText("✂️", 922, 32);
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "rgba(80,80,80,0.95)";
+  ctx.fillText("✂️", 620, 6);
 
-  watermark(ctx, 922, 1225, "center");
   return canvasToBlob(canvas);
 }
 
