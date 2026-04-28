@@ -161,10 +161,6 @@ export async function renderLayoutB(photos: string[]): Promise<Blob> {
   drawCover(ctx, imgs[1], 942, 20, 900, 600);
   drawCover(ctx, imgs[2], 22, 640, 900, 600);
   drawCover(ctx, imgs[3], 942, 640, 900, 600);
-  // Frame overlay (subtle inner border)
-  ctx.strokeStyle = "rgba(0,0,0,0.08)";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(2, 2, 1840, 1236);
   // Watermark dark on white
   ctx.save();
   ctx.font = "500 22px 'Noto Sans Thai', sans-serif";
@@ -173,6 +169,15 @@ export async function renderLayoutB(photos: string[]): Promise<Blob> {
   ctx.textBaseline = "bottom";
   ctx.fillText(WATERMARK, 1820, 1225);
   ctx.restore();
+  // Frame overlay LAST (transparent PNG, full sheet)
+  const frame = await loadFrame();
+  if (frame) {
+    ctx.drawImage(frame, 0, 0, 1844, 1240);
+  } else {
+    ctx.strokeStyle = "rgba(0,0,0,0.08)";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, 1840, 1236);
+  }
   return canvasToBlob(canvas);
 }
 
