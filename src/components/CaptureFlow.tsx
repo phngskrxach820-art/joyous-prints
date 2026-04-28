@@ -105,6 +105,8 @@ export function CaptureFlow({ onComplete }: Props) {
     c.width = w;
     c.height = h;
     const ctx = c.getContext("2d")!;
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
     ctx.drawImage(video, 0, 0, w, h);
     const blob: Blob = await new Promise((res, rej) =>
       c.toBlob((b) => (b ? res(b) : rej()), "image/jpeg", 0.92),
