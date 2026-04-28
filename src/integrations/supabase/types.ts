@@ -45,41 +45,38 @@ export type Database = {
       }
       sessions: {
         Row: {
-          consent: boolean
           created_at: string
-          email: string | null
-          first_name: string | null
           format: string | null
           id: string
+          layout: string | null
+          output_url: string | null
           payment_status: string
-          phone: string | null
           photo_url: string | null
+          photos: Json | null
           price: number
           updated_at: string
         }
         Insert: {
-          consent?: boolean
           created_at?: string
-          email?: string | null
-          first_name?: string | null
           format?: string | null
           id?: string
+          layout?: string | null
+          output_url?: string | null
           payment_status?: string
-          phone?: string | null
           photo_url?: string | null
+          photos?: Json | null
           price?: number
           updated_at?: string
         }
         Update: {
-          consent?: boolean
           created_at?: string
-          email?: string | null
-          first_name?: string | null
           format?: string | null
           id?: string
+          layout?: string | null
+          output_url?: string | null
           payment_status?: string
-          phone?: string | null
           photo_url?: string | null
+          photos?: Json | null
           price?: number
           updated_at?: string
         }
