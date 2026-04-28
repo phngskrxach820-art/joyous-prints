@@ -4,9 +4,10 @@ import { tick, shutter } from "@/lib/audio";
 
 type Props = {
   onComplete: (photos: Blob[]) => void;
+  totalShots?: number;
 };
 
-export function CaptureFlow({ onComplete }: Props) {
+export function CaptureFlow({ onComplete, totalShots = 4 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [phase, setPhase] = useState<"init" | "preview" | "countdown" | "flash" | "review" | "done" | "error">("init");
@@ -121,7 +122,7 @@ export function CaptureFlow({ onComplete }: Props) {
       // Show thumbnail review for 1.5s
       setPhase("review");
       setTimeout(() => {
-        if (newBlobs.length >= 4) {
+        if (newBlobs.length >= totalShots) {
           setPhase("done");
           setTimeout(() => onComplete(newBlobs), 2000);
         } else {
@@ -151,7 +152,7 @@ export function CaptureFlow({ onComplete }: Props) {
     <div className="relative min-h-[80vh] flex flex-col items-center">
       {/* Progress */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-full bg-card/80 backdrop-blur border border-border text-sm font-semibold">
-        รูปที่ {Math.min(shotIndex + 1, 4)}/4
+        รูปที่ {Math.min(shotIndex + 1, totalShots)}/{totalShots}
       </div>
 
       {/* Camera selector */}
@@ -219,14 +220,14 @@ export function CaptureFlow({ onComplete }: Props) {
                 <img key={i} src={src} className="rounded-xl shadow-lg w-full aspect-video object-cover" alt={`shot ${i + 1}`} />
               ))}
             </div>
-            <p className="text-2xl font-bold text-white">ได้ครบ 4 รูปแล้ว! 🎉</p>
+            <p className="text-2xl font-bold text-white">ได้ครบ {totalShots} รูปแล้ว! 🎉</p>
           </div>
         )}
       </div>
 
       {/* Thumbnail strip below */}
       <div className="mt-6 flex gap-3">
-        {[0, 1, 2, 3].map((i) => (
+        {Array.from({ length: totalShots }, (_, i) => i).map((i) => (
           <div
             key={i}
             className={`w-16 h-12 rounded-lg border-2 overflow-hidden ${
