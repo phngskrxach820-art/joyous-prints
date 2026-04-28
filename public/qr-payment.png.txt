@@ -1,0 +1,1 @@
+Replace this with the real PromptPay QR image at public/qr-payment.png
