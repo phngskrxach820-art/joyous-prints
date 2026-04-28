@@ -102,6 +102,7 @@ function SessionPage() {
     setTimeout(async () => {
       await supabase.from("sessions").update({ payment_status: "paid" }).eq("id", id);
       setPaid(true);
+      paymentSuccess();
       setStep("rendering");
       const result = await renderPromise;
       if (!result) {
