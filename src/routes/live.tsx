@@ -1,92 +1,82 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Camera } from "lucide-react";
 
 export const Route = createFileRoute("/live")({
-  component: LivePage,
+  component: LiveView,
 });
 
-function LivePage() {
-  const [latest, setLatest] = useState<{ photo_url: string | null; first_name: string | null } | null>(
-    null
-  );
-  const [countdown, setCountdown] = useState<number | null>(null);
+function LiveView() {
+  const [time, setTime] = useState("");
+  const [activeDot, setActiveDot] = useState(0);
 
   useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from("sessions")
-        .select("photo_url, first_name")
-        .not("photo_url", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data) setLatest(data);
-    };
-    load();
-    const channel = supabase
-      .channel("live-feed")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "sessions" },
-        () => load()
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const t = setInterval(() => {
+      setTime(new Date().toLocaleTimeString("th-TH"));
+    }, 1000);
+    return () => clearInterval(t);
   }, []);
 
-  // Demo countdown trigger
   useEffect(() => {
-    const interval = setInterval(() => {
-      let n = 3;
-      setCountdown(n);
-      const t = setInterval(() => {
-        n -= 1;
-        if (n <= 0) {
-          clearInterval(t);
-          setCountdown(null);
-        } else {
-          setCountdown(n);
-        }
-      }, 1000);
-    }, 30000);
-    return () => clearInterval(interval);
+    const t = setInterval(() => setActiveDot((d) => (d + 1) % 3), 500);
+    return () => clearInterval(t);
   }, []);
 
   return (
-    <main className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,oklch(0.76_0.13_80/0.15),transparent_60%)]" />
+    <main className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center text-center px-6" style={{ background: "#0D0D0D", color: "#FAFAFA" }}>
+      {/* Animated gradient */}
+      <div
+        className="absolute inset-0 opacity-40 animate-gradient pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(135deg, var(--color-primary), var(--color-secondary), var(--color-primary))",
+        }}
+      />
 
-      {countdown !== null && (
-        <div className="absolute z-30 text-[20rem] font-bold bg-gradient-gold bg-clip-text text-transparent animate-pulse-soft">
-          {countdown}
-        </div>
-      )}
+      {/* Bokeh */}
+      {Array.from({ length: 9 }).map((_, i) => {
+        const size = 40 + Math.random() * 80;
+        return (
+          <div
+            key={i}
+            className="absolute rounded-full bg-white animate-drift pointer-events-none"
+            style={{
+              width: size,
+              height: size,
+              left: `${(i * 11) % 100}%`,
+              top: `${(i * 23) % 100}%`,
+              opacity: 0.15 + Math.random() * 0.15,
+              filter: "blur(20px)",
+              animationDelay: `${i * 0.7}s`,
+              animationDuration: `${15 + i * 2}s`,
+            }}
+          />
+        );
+      })}
 
-      <div className="relative z-10 text-center max-w-3xl px-8">
-        {latest?.photo_url ? (
-          <>
-            <img
-              src={latest.photo_url}
-              alt="Latest"
-              className="max-h-[70vh] mx-auto rounded-3xl shadow-2xl animate-fade-in glow-gold"
+      <div className="relative z-10 animate-fade-in">
+        <Camera className="h-20 w-20 mx-auto mb-8 text-white animate-pulse-soft" strokeWidth={1.5} />
+        <h1 className="font-heading font-bold leading-tight mb-3" style={{ fontSize: "clamp(2.5rem, 6vw, 4rem)" }}>
+          พร้อมถ่ายรูปแล้วหรือยัง? 📷
+        </h1>
+        <p className="text-xl opacity-70 mb-8">มาถ่ายรูปด้วยกันเลย</p>
+        <div className="flex justify-center gap-2">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="w-3 h-3 rounded-full transition-all"
+              style={{
+                background: "var(--color-primary)",
+                opacity: activeDot === i ? 1 : 0.3,
+                transform: activeDot === i ? "scale(1.4)" : "scale(1)",
+              }}
             />
-            {latest.first_name && (
-              <p className="mt-6 text-2xl text-white/90 animate-fade-in">
-                ✨ {latest.first_name}
-              </p>
-            )}
-          </>
-        ) : (
-          <div className="text-white/60">
-            <Camera className="h-24 w-24 mx-auto mb-6 text-gold animate-pulse-soft" strokeWidth={1} />
-            <p className="text-3xl font-light tracking-wide">Ready when you are</p>
-            <p className="mt-3 text-sm uppercase tracking-[0.3em] text-gold">Photo Booth Live</p>
-          </div>
-        )}
+          ))}
+        </div>
+      </div>
+
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-sm opacity-50 z-10 font-mono">
+        {time}
       </div>
     </main>
   );

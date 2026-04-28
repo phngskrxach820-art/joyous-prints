@@ -1,400 +1,360 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { generatePromptPayQR, generateUrlQR } from "@/lib/promptpay";
-import { loadConfig } from "@/lib/admin-config";
 import { toast } from "sonner";
-import {
-  Image as ImageIcon,
-  Grid2x2,
-  Rows3,
-  Film,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Download,
-  Printer,
-  ArrowLeft,
-} from "lucide-react";
-import { z } from "zod";
+import { ArrowLeft, CheckCircle2, Loader2, Download, Printer, Sparkles, Star } from "lucide-react";
+import { CaptureFlow } from "@/components/CaptureFlow";
+import { LAYOUTS, renderLayout, type LayoutId } from "@/lib/composer";
+import { loadConfig } from "@/lib/admin-config";
+import QRCode from "qrcode";
 
 export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
 });
 
-type Step = "format" | "form" | "payment" | "delivery";
-
-const formats = [
-  { id: "single", label: "Single Print", icon: ImageIcon },
-  { id: "collage", label: "2×2 Collage", icon: Grid2x2 },
-  { id: "strip", label: "3-Strip", icon: Rows3 },
-  { id: "gif", label: "GIF Animated", icon: Film },
-];
-
-const formSchema = z.object({
-  first_name: z.string().trim().min(1, "กรุณากรอกชื่อ").max(60),
-  phone: z.string().trim().regex(/^\d{9,10}$/, "เบอร์ไม่ถูกต้อง"),
-  email: z.string().trim().email("อีเมลไม่ถูกต้อง").max(255).optional().or(z.literal("")),
-  consent: z.boolean(),
-});
+type Step = "capture" | "uploading" | "format" | "payment" | "rendering" | "delivery";
 
 function SessionPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const cfg = typeof window !== "undefined" ? loadConfig() : null;
-  const [step, setStep] = useState<Step>("format");
-  const [format, setFormat] = useState<string>("single");
-  const [form, setForm] = useState({ first_name: "", phone: "", email: "", consent: false });
-  const [qr, setQr] = useState<string>("");
+  const [step, setStep] = useState<Step>("capture");
+  const [photoBlobs, setPhotoBlobs] = useState<Blob[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [layout, setLayout] = useState<LayoutId>("B");
+  const [confirming, setConfirming] = useState(false);
+  const [paid, setPaid] = useState(false);
+  const [outputUrl, setOutputUrl] = useState<string>("");
   const [downloadQr, setDownloadQr] = useState<string>("");
-  const [paymentStatus, setPaymentStatus] = useState<"pending" | "paid" | "timeout" | "failed">(
-    "pending"
-  );
-  const [secondsLeft, setSecondsLeft] = useState(300);
-  const [printing, setPrinting] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
 
-  // Subscribe to payment status changes (admin confirms in /admin)
-  useEffect(() => {
-    if (step !== "payment") return;
-    const channel = supabase
-      .channel(`session-${id}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "sessions", filter: `id=eq.${id}` },
-        (payload) => {
-          const status = (payload.new as { payment_status: string }).payment_status;
-          if (status === "paid") {
-            setPaymentStatus("paid");
-            toast.success("ชำระเงินสำเร็จ!");
-            setTimeout(() => setStep("delivery"), 1200);
-          } else if (status === "failed") {
-            setPaymentStatus("failed");
-          }
-        }
-      )
-      .subscribe();
-    // Polling fallback every 3s
-    const poll = setInterval(async () => {
-      const { data } = await supabase
-        .from("sessions")
-        .select("payment_status")
-        .eq("id", id)
-        .maybeSingle();
-      if (data?.payment_status === "paid") {
-        setPaymentStatus("paid");
-        setTimeout(() => setStep("delivery"), 1200);
+  const cfg = typeof window !== "undefined" ? loadConfig() : null;
+  const price = cfg?.price ?? 50;
+
+  // After capture: upload to storage
+  async function handleCaptured(blobs: Blob[]) {
+    setPhotoBlobs(blobs);
+    setStep("uploading");
+    try {
+      const urls: string[] = [];
+      for (let i = 0; i < blobs.length; i++) {
+        const path = `${id}/shot-${i + 1}-${Date.now()}.jpg`;
+        const { error } = await supabase.storage.from("photos").upload(path, blobs[i], {
+          contentType: "image/jpeg",
+          upsert: true,
+        });
+        if (error) throw error;
+        const { data } = supabase.storage.from("photos").getPublicUrl(path);
+        urls.push(data.publicUrl);
       }
-    }, 3000);
-    return () => {
-      supabase.removeChannel(channel);
-      clearInterval(poll);
-    };
-  }, [step, id]);
-
-  // Countdown for payment timeout
-  useEffect(() => {
-    if (step !== "payment" || paymentStatus !== "pending") return;
-    const t = setInterval(() => {
-      setSecondsLeft((s) => {
-        if (s <= 1) {
-          clearInterval(t);
-          setPaymentStatus("timeout");
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, [step, paymentStatus]);
-
-  // Generate download QR when entering delivery
-  useEffect(() => {
-    if (step !== "delivery") return;
-    const url = `${window.location.origin}/download/${id}`;
-    generateUrlQR(url).then(setDownloadQr);
-  }, [step, id]);
-
-  async function chooseFormat() {
-    await supabase.from("sessions").update({ format }).eq("id", id);
-    setStep("form");
+      setPhotoUrls(urls);
+      await supabase.from("sessions").update({ photos: urls }).eq("id", id);
+      setStep("format");
+    } catch (e) {
+      console.error(e);
+      toast.error("อัปโหลดรูปไม่สำเร็จ");
+      setStep("capture");
+    }
   }
 
-  async function submitForm() {
-    const parsed = formSchema.safeParse(form);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
-      return;
-    }
-    await supabase
-      .from("sessions")
-      .update({
-        first_name: parsed.data.first_name,
-        phone: parsed.data.phone,
-        email: parsed.data.email || null,
-        consent: parsed.data.consent,
-      })
-      .eq("id", id);
-
-    // Generate PromptPay QR
-    const config = loadConfig();
-    const qrData = await generatePromptPayQR(config.promptpayId, config.price);
-    setQr(qrData);
-    setSecondsLeft(300);
-    setPaymentStatus("pending");
+  async function chooseLayout(l: LayoutId) {
+    setLayout(l);
+    await supabase.from("sessions").update({ layout: l }).eq("id", id);
     setStep("payment");
   }
 
-  async function retryPayment() {
-    const config = loadConfig();
-    const qrData = await generatePromptPayQR(config.promptpayId, config.price);
-    setQr(qrData);
-    setSecondsLeft(300);
-    setPaymentStatus("pending");
+  async function confirmPayment() {
+    setConfirming(true);
+    // Mark in DB; simulate verification 10s
+    await supabase.from("sessions").update({ payment_status: "checking" }).eq("id", id);
+    setTimeout(async () => {
+      await supabase.from("sessions").update({ payment_status: "paid" }).eq("id", id);
+      setPaid(true);
+      setTimeout(() => {
+        setStep("rendering");
+        renderAndProceed();
+      }, 1500);
+    }, 10000);
   }
 
-  async function addToPrintQueue() {
-    setPrinting(true);
-    await supabase.from("print_queue").insert({ session_id: id });
-    toast.success("ส่งเข้าคิวพิมพ์แล้ว!");
-    setTimeout(() => setPrinting(false), 1500);
+  async function renderAndProceed() {
+    try {
+      const blob = await renderLayout(layout, photoUrls);
+      const ext = layout === "D" ? "gif" : "jpg";
+      const ct = layout === "D" ? "image/gif" : "image/jpeg";
+      const path = `${id}/output-${layout}.${ext}`;
+      const { error } = await supabase.storage.from("photos").upload(path, blob, {
+        contentType: ct,
+        upsert: true,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from("photos").getPublicUrl(path);
+      await supabase.from("sessions").update({ output_url: data.publicUrl }).eq("id", id);
+      setOutputUrl(data.publicUrl);
+
+      const downloadUrl = `${window.location.origin}/download/${id}`;
+      const qr = await QRCode.toDataURL(downloadUrl, { margin: 1, width: 320 });
+      setDownloadQr(qr);
+      setStep("delivery");
+    } catch (e) {
+      console.error(e);
+      toast.error("สร้างรูปไม่สำเร็จ");
+    }
   }
 
-  const price = cfg?.price ?? 50;
+  // Print modal
+  function openPrint() {
+    setPrintOpen(true);
+  }
+  function doPrint() {
+    const w = window.open("", "_blank", "width=900,height=700");
+    if (!w) return;
+    const orient = cfg?.printOrientation === "portrait" ? "portrait" : "landscape";
+    w.document.write(`
+      <html><head><title>Print</title>
+      <style>
+        @page { size: 4in 6in ${orient}; margin: 0; }
+        body { margin: 0; }
+        img { width: 100%; height: 100%; object-fit: contain; display: block; }
+      </style>
+      </head><body><img src="${outputUrl}" onload="window.print(); setTimeout(() => window.close(), 500)"/></body></html>
+    `);
+    w.document.close();
+    setPrintOpen(false);
+  }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:py-12 max-w-2xl mx-auto">
-      <Link
-        to="/"
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8"
-      >
+    <main className="min-h-screen px-4 py-6 max-w-5xl mx-auto">
+      <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ArrowLeft className="h-4 w-4" /> หน้าแรก
       </Link>
 
-      <Stepper step={step} />
+      {step === "capture" && <CaptureFlow onComplete={handleCaptured} />}
+
+      {step === "uploading" && (
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-lg">กำลังอัปโหลดรูปนะ...</p>
+        </div>
+      )}
 
       {step === "format" && (
         <section className="animate-fade-in">
-          <h2 className="text-3xl font-bold mb-2">เลือกรูปแบบ</h2>
-          <p className="text-muted-foreground mb-8">เลือกฟอร์แมตที่คุณต้องการ</p>
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            {formats.map((f) => {
-              const Icon = f.icon;
-              const active = format === f.id;
-              return (
-                <button
-                  key={f.id}
-                  onClick={() => setFormat(f.id)}
-                  className={`p-6 rounded-2xl border-2 transition-all text-left ${
-                    active
-                      ? "border-primary bg-primary/10 shadow-gold"
-                      : "border-white/10 hover:border-white/30"
-                  }`}
-                >
-                  <Icon className={`h-8 w-8 mb-3 ${active ? "text-gold" : "text-foreground"}`} />
-                  <p className="font-semibold">{f.label}</p>
-                </button>
-              );
-            })}
-          </div>
-          <PrimaryButton onClick={chooseFormat}>ถัดไป</PrimaryButton>
-        </section>
-      )}
+          <h2 className="text-3xl md:text-4xl font-heading font-bold mb-2">อยากได้แบบไหน?</h2>
+          <p className="text-muted-foreground mb-8">เลือก 1 แบบจาก 4 ฟอร์แมต</p>
 
-      {step === "form" && (
-        <section className="animate-fade-in">
-          <h2 className="text-3xl font-bold mb-2">ข้อมูลของคุณ</h2>
-          <p className="text-muted-foreground mb-8">เพื่อส่งรูปและการแจ้งเตือน</p>
-          <div className="space-y-4 mb-8">
-            <Field label="ชื่อ *">
-              <input
-                value={form.first_name}
-                onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-                maxLength={60}
-                className="input"
-                placeholder="ชื่อจริง"
-              />
-            </Field>
-            <Field label="เบอร์โทร *">
-              <input
-                value={form.phone}
-                onChange={(e) =>
-                  setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })
-                }
-                inputMode="numeric"
-                className="input"
-                placeholder="0812345678"
-              />
-            </Field>
-            <Field label="อีเมล (ไม่บังคับ)">
-              <input
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                maxLength={255}
-                type="email"
-                className="input"
-                placeholder="you@example.com"
-              />
-            </Field>
-            <label className="flex items-start gap-3 p-4 rounded-xl border border-white/10 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.consent}
-                onChange={(e) => setForm({ ...form, consent: e.target.checked })}
-                className="mt-1 h-5 w-5 accent-[oklch(0.76_0.13_80)]"
-              />
-              <span className="text-sm text-muted-foreground">
-                ยินยอมรับข่าวสารและโปรโมชั่นจากเรา
-              </span>
-            </label>
+          <div className="grid sm:grid-cols-2 gap-4 mb-8">
+            {LAYOUTS.map((l) => (
+              <button
+                key={l.id}
+                onClick={() => setLayout(l.id)}
+                className={`relative p-6 rounded-3xl border-2 text-left transition-all ${
+                  layout === l.id
+                    ? "border-primary bg-primary/10 scale-[1.02]"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                {l.recommended && (
+                  <div className="absolute -top-3 right-4 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1">
+                    <Star className="h-3 w-3" /> แนะนำ
+                  </div>
+                )}
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-3xl">{l.emoji}</span>
+                  <h3 className="font-heading font-bold text-xl">{l.label}</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">{l.desc}</p>
+                <FormatPreview id={l.id} photos={photoUrls} />
+                {l.digitalOnly && (
+                  <p className="mt-3 text-xs text-secondary">* เซฟไฟล์อย่างเดียว ไม่ปริ้นท์</p>
+                )}
+              </button>
+            ))}
           </div>
-          <PrimaryButton onClick={submitForm}>ดำเนินการต่อ</PrimaryButton>
+
+          <button
+            onClick={() => chooseLayout(layout)}
+            className="w-full h-14 rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:scale-[1.01] transition"
+          >
+            ไปต่อเลย →
+          </button>
         </section>
       )}
 
       {step === "payment" && (
-        <section className="animate-fade-in text-center">
-          <h2 className="text-3xl font-bold mb-2">สแกนเพื่อชำระเงิน</h2>
-          <p className="text-muted-foreground mb-6">
-            ยอด <span className="text-gold font-semibold">{price} บาท</span>
-          </p>
+        <section className="animate-fade-in max-w-md mx-auto text-center">
+          <h2 className="text-3xl font-heading font-bold mb-2">สแกน QR จ่ายได้เลย</h2>
+          <p className="text-muted-foreground mb-6">PromptPay รับทุกธนาคาร</p>
 
-          {paymentStatus === "pending" && (
-            <>
-              <div className="inline-block bg-white p-6 rounded-3xl shadow-gold animate-pulse-soft mb-6">
-                {qr ? (
-                  <img src={qr} alt="PromptPay QR" className="w-64 h-64" />
-                ) : (
-                  <div className="w-64 h-64 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-black" />
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center justify-center gap-2 text-muted-foreground mb-4">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>รอการยืนยัน... ({formatTime(secondsLeft)})</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                แอดมินจะยืนยันการชำระเงินใน /admin
-              </p>
-            </>
-          )}
+          <div className="bg-white p-4 rounded-3xl inline-block shadow-2xl mb-6">
+            <img src="/qr-payment.png" alt="PromptPay QR" className="w-[280px] max-w-full" onError={(e) => { (e.target as HTMLImageElement).src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect width='200' height='200' fill='%23f0f0f0'/><text x='100' y='100' text-anchor='middle' fill='%23999' font-size='14'>อัปโหลด /public/qr-payment.png</text></svg>"; }} />
+          </div>
 
-          {paymentStatus === "paid" && (
-            <div className="py-12">
-              <CheckCircle2 className="h-20 w-20 text-green-400 mx-auto mb-4 animate-fade-in" />
-              <p className="text-xl font-semibold">ชำระเงินสำเร็จ</p>
-            </div>
-          )}
+          <p className="font-bold text-xl">นาย พงศกร อาจหาญ</p>
+          <p className="text-sm text-muted-foreground mb-2">รับเงินได้จากทุกธนาคาร</p>
+          <p className="text-3xl font-heading font-bold text-primary mb-8">{price} ฿</p>
 
-          {(paymentStatus === "timeout" || paymentStatus === "failed") && (
+          {!confirming ? (
+            <button
+              onClick={confirmPayment}
+              className="w-full h-14 rounded-full bg-green-600 text-white font-semibold text-lg hover:bg-green-700 transition"
+            >
+              ✓ โอนแล้ว ยืนยันเลย
+            </button>
+          ) : !paid ? (
             <div className="py-8">
-              <XCircle className="h-20 w-20 text-destructive mx-auto mb-4" />
-              <p className="text-xl font-semibold mb-2">
-                {paymentStatus === "timeout" ? "หมดเวลาชำระเงิน" : "การชำระเงินล้มเหลว"}
-              </p>
-              <p className="text-muted-foreground mb-6">กรุณาลองใหม่อีกครั้ง</p>
-              <PrimaryButton onClick={retryPayment}>ลองอีกครั้ง</PrimaryButton>
+              <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+              <p className="font-semibold">กำลังเช็คให้นะ รอแปปนึง...</p>
+              <p className="text-sm text-muted-foreground mt-1">รอสักครู่นะ ใช้เวลาประมาณ 10 วินาที</p>
+            </div>
+          ) : (
+            <div className="py-8">
+              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-3 animate-pop" />
+              <p className="text-xl font-semibold">เรียบร้อย! รับรูปได้เลย 🎉</p>
             </div>
           )}
         </section>
       )}
 
+      {step === "rendering" && (
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+          <Sparkles className="h-12 w-12 animate-pulse-soft text-primary" />
+          <p className="text-lg">กำลังจัดรูปสวยๆ ให้นะ...</p>
+        </div>
+      )}
+
       {step === "delivery" && (
         <section className="animate-fade-in">
-          <h2 className="text-3xl font-bold mb-2">รับรูปของคุณ</h2>
-          <p className="text-muted-foreground mb-8">เลือกวิธีรับรูป</p>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="p-6 rounded-2xl border border-white/10 bg-card/60 text-center">
-              <Download className="h-6 w-6 text-gold mx-auto mb-3" />
-              <h3 className="font-semibold mb-3">ดาวน์โหลด</h3>
-              <p className="text-xs text-muted-foreground mb-4">สแกนด้วยมือถือ</p>
-              <div className="bg-white p-3 rounded-xl inline-block">
-                {downloadQr ? (
-                  <img src={downloadQr} alt="Download" className="w-40 h-40" />
-                ) : (
-                  <div className="w-40 h-40 flex items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-black" />
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="p-6 rounded-2xl border border-white/10 bg-card/60 text-center flex flex-col">
-              <Printer className="h-6 w-6 text-gold mx-auto mb-3" />
-              <h3 className="font-semibold mb-3">พิมพ์</h3>
-              <p className="text-xs text-muted-foreground mb-4">รับรูปจากเครื่องพิมพ์</p>
-              <div className="flex-1 flex items-end">
-                <PrimaryButton onClick={addToPrintQueue} disabled={printing}>
-                  {printing ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Printing...
-                    </span>
-                  ) : (
-                    "สั่งพิมพ์"
-                  )}
-                </PrimaryButton>
-              </div>
+          <h2 className="text-3xl font-heading font-bold mb-6 text-center">เสร็จแล้ว! ขอบคุณนะ 🎉</h2>
+
+          {/* Output preview */}
+          <div className="flex justify-center mb-8">
+            <div className="bg-card p-3 rounded-2xl shadow-2xl max-w-md">
+              <img src={outputUrl} alt="output" className="w-full rounded-xl" />
             </div>
           </div>
+
+          {layout === "D" ? (
+            <div className="max-w-md mx-auto p-6 rounded-3xl border border-border bg-card text-center">
+              <p className="text-2xl mb-3">✨</p>
+              <h3 className="font-heading font-bold text-xl mb-3">เซฟ GIF ลงมือถือ</h3>
+              <p className="text-sm text-muted-foreground mb-4">สแกนเลย</p>
+              {downloadQr && <img src={downloadQr} alt="qr" className="w-44 mx-auto rounded-xl" />}
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-5 max-w-2xl mx-auto">
+              <div className="p-6 rounded-3xl border border-border bg-card text-center">
+                <p className="text-2xl mb-2">📲</p>
+                <h3 className="font-heading font-bold text-lg mb-3">เซฟลงมือถือ</h3>
+                <p className="text-xs text-muted-foreground mb-3">สแกน QR ด้วยมือถือ</p>
+                {downloadQr && <img src={downloadQr} alt="qr" className="w-40 mx-auto rounded-xl" />}
+              </div>
+              <div className="p-6 rounded-3xl border border-border bg-card text-center flex flex-col">
+                <p className="text-2xl mb-2">🖨️</p>
+                <h3 className="font-heading font-bold text-lg mb-3">ปริ้นท์รับเลย</h3>
+                <p className="text-xs text-muted-foreground mb-4 flex-1">ดูตัวอย่างก่อนแล้วค่อยปริ้นท์</p>
+                <button
+                  onClick={openPrint}
+                  className="h-12 rounded-full bg-primary text-primary-foreground font-semibold hover:scale-[1.02] transition inline-flex items-center justify-center gap-2"
+                >
+                  <Printer className="h-4 w-4" /> ปริ้นท์รับเลย 🖨️
+                </button>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={() => navigate({ to: "/" })}
-            className="mt-8 w-full text-center text-sm text-muted-foreground hover:text-foreground"
+            className="block mx-auto mt-10 text-sm text-muted-foreground hover:text-foreground"
           >
             จบ session
           </button>
+
+          {/* Print preview modal */}
+          {printOpen && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur flex items-center justify-center p-4 animate-fade-in">
+              <div className="bg-card max-w-2xl w-full rounded-3xl p-6 shadow-2xl">
+                <h3 className="font-heading font-bold text-xl mb-4">ตัวอย่างก่อนปริ้นท์</h3>
+                <img src={outputUrl} alt="preview" className="w-full rounded-xl mb-4 border border-border" />
+                <p className="text-xs text-muted-foreground mb-4">
+                  4×6 นิ้ว · 300 DPI · {cfg?.printOrientation === "portrait" ? "แนวตั้ง" : "แนวนอน"}
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setPrintOpen(false)}
+                    className="flex-1 h-12 rounded-full border border-border font-semibold"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    onClick={doPrint}
+                    className="flex-1 h-12 rounded-full bg-primary text-primary-foreground font-semibold inline-flex items-center justify-center gap-2"
+                  >
+                    <Printer className="h-4 w-4" /> ปริ้นท์
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       )}
     </main>
   );
 }
 
-function Stepper({ step }: { step: Step }) {
-  const steps: Step[] = ["format", "form", "payment", "delivery"];
-  const idx = steps.indexOf(step);
+function FormatPreview({ id, photos }: { id: LayoutId; photos: string[] }) {
+  const p = (i: number) => photos[i] ?? "";
+  if (id === "A") {
+    return (
+      <div className="aspect-[3/2] bg-black rounded-xl p-1 flex gap-1">
+        {[0, 1].map((s) => (
+          <div key={s} className="flex-1 grid grid-rows-3 gap-0.5">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="bg-muted overflow-hidden rounded">
+                {p(i) && <img src={p(i)} alt="" className="w-full h-full object-cover" />}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (id === "B") {
+    return (
+      <div className="aspect-[3/2] bg-white rounded-xl p-1 grid grid-cols-2 gap-1">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="bg-muted overflow-hidden rounded">
+            {p(i) && <img src={p(i)} alt="" className="w-full h-full object-cover" />}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (id === "C") {
+    return (
+      <div className="aspect-[2/3] mx-auto w-1/2 bg-white rounded-xl p-1 flex flex-col gap-1">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="flex-1 bg-muted overflow-hidden rounded">
+            {p(i) && <img src={p(i)} alt="" className="w-full h-full object-cover" />}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  // D — animated cycle
   return (
-    <div className="flex items-center gap-2 mb-10">
-      {steps.map((s, i) => (
-        <div
-          key={s}
-          className={`h-1 flex-1 rounded-full transition-all ${
-            i <= idx ? "bg-gradient-gold" : "bg-white/10"
-          }`}
+    <div className="aspect-square bg-black rounded-xl overflow-hidden relative">
+      {photos.slice(0, 4).map((src, i) => (
+        <img
+          key={i}
+          src={src}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{
+            animation: `gifCycle 0.6s steps(1) ${i * 0.15}s infinite`,
+          }}
         />
       ))}
+      <style>{`@keyframes gifCycle { 0%, 25% { opacity: 1; } 26%, 100% { opacity: 0; } }`}</style>
     </div>
   );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="block text-sm text-muted-foreground mb-2">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function PrimaryButton({
-  children,
-  onClick,
-  disabled,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="w-full h-14 rounded-full bg-gradient-gold text-primary-foreground font-semibold shadow-gold hover:scale-[1.01] transition disabled:opacity-50"
-    >
-      {children}
-    </button>
-  );
-}
-
-function formatTime(s: number) {
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m}:${r.toString().padStart(2, "0")}`;
 }
