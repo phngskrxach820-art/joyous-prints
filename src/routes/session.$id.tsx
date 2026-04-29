@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Loader2, Printer, Sparkles, Star } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Printer, Sparkles, Star, Check } from "lucide-react";
 import { CaptureFlow } from "@/components/CaptureFlow";
 import { LAYOUTS, renderLayout, renderLayoutD, type LayoutId } from "@/lib/composer";
 import { loadConfig } from "@/lib/admin-config";
@@ -13,14 +13,26 @@ export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
 });
 
-type Step = "capture" | "uploading" | "format" | "payment" | "rendering" | "delivery";
+type Step = "format" | "capture" | "uploading" | "filter" | "payment" | "rendering" | "delivery";
+
+type FilterId = "none" | "film" | "soft" | "cool" | "bw" | "vintage";
+const FILTERS: Record<FilterId, { label: string; css: string }> = {
+  none:    { label: "ปกติ",       css: "none" },
+  film:    { label: "ฟิล์ม 🎞️",   css: "sepia(30%) contrast(95%) brightness(105%) saturate(85%)" },
+  soft:    { label: "นุ่มๆ 🌸",   css: "brightness(110%) saturate(80%) contrast(90%) hue-rotate(5deg)" },
+  cool:    { label: "เย็นๆ 🩵",   css: "saturate(70%) brightness(100%) hue-rotate(190deg) contrast(95%)" },
+  bw:      { label: "ขาวดำ 🖤",   css: "grayscale(100%) contrast(105%)" },
+  vintage: { label: "วินเทจ 🟤",  css: "sepia(50%) brightness(95%) contrast(90%) saturate(75%)" },
+};
+const FILTER_ORDER: FilterId[] = ["none", "film", "soft", "cool", "bw", "vintage"];
 
 function SessionPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>("capture");
+  const [step, setStep] = useState<Step>("format");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [layout, setLayout] = useState<LayoutId>("B");
+  const [filter, setFilter] = useState<FilterId>("none");
   const [confirming, setConfirming] = useState(false);
   const [paid, setPaid] = useState(false);
   const [photoOutputUrl, setPhotoOutputUrl] = useState<string>("");
@@ -48,7 +60,7 @@ function SessionPage() {
       }
       setPhotoUrls(urls);
       await supabase.from("sessions").update({ photos: urls }).eq("id", id);
-      setStep("format");
+      setStep("filter");
     } catch (e) {
       console.error(e);
       toast.error("อัปโหลดรูปไม่สำเร็จ");
@@ -59,7 +71,20 @@ function SessionPage() {
   async function chooseLayout(l: LayoutId) {
     setLayout(l);
     await supabase.from("sessions").update({ layout: l }).eq("id", id);
-    setStep("payment");
+    setStep("capture");
+  }
+
+  function backFromCapture() {
+    if (confirm("เริ่มถ่ายใหม่เลยนะ?")) {
+      setStep("format");
+    }
+  }
+
+  function backFromFilter() {
+    if (confirm("ถ่ายใหม่เลยนะ?")) {
+      setPhotoUrls([]);
+      setStep("capture");
+    }
   }
 
   // Background: render+upload BOTH the JPEG collage and the GIF in parallel.
