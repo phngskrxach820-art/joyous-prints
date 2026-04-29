@@ -88,9 +88,9 @@ function SessionPage() {
   }
 
   // Background: render+upload BOTH the JPEG collage and the GIF in parallel.
-  async function backgroundRender(l: LayoutId, urls: string[]) {
+  async function backgroundRender(l: LayoutId, urls: string[], filterCss: string) {
     const photoTask = (async () => {
-      const blob = await renderLayout(l, urls);
+      const blob = await renderLayout(l, urls, filterCss);
       const path = `${id}/output-photo.jpg`;
       const { error } = await supabase.storage.from("photos").upload(path, blob, {
         contentType: "image/jpeg",
@@ -101,7 +101,7 @@ function SessionPage() {
       return data.publicUrl;
     })();
     const gifTask = (async () => {
-      const blob = await renderLayoutD(urls);
+      const blob = await renderLayoutD(urls, filterCss);
       const path = `${id}/output-gif.gif`;
       const { error } = await supabase.storage.from("photos").upload(path, blob, {
         contentType: "image/gif",
@@ -119,7 +119,7 @@ function SessionPage() {
     await supabase.from("sessions").update({ payment_status: "checking" }).eq("id", id);
 
     // Kick off render in background while the 10s "verifying" UX runs.
-    const renderPromise = backgroundRender(layout, photoUrls).catch((e) => {
+    const renderPromise = backgroundRender(layout, photoUrls, FILTERS[filter].css).catch((e) => {
       console.error("render failed", e);
       return null;
     });
