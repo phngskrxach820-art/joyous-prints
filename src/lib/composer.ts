@@ -273,5 +273,5 @@ export async function renderLayout(layout: LayoutId, photos: string[], filter: s
 
 export const LAYOUTS = [
   { id: "A" as const, label: "แบ่งให้เพื่อน 💑 (2x6)", emoji: "💑", desc: "ถ่าย 3 รูป ได้ 2 แถบเหมือนกันบนกระดาษ 4x6 แบ่งกับเพื่อนได้เลย", needsCount: 3 },
-  { id: "B" as const, label: "เต็มแผ่น 4x6 🖼️", emoji: "🖼️", desc: "ถ่าย 6 รูป จัดเป็นกริด 2x3 เต็มแผ่น 4x6", recommended: true, needsCount: 6 },
+  { id: "B" as const, label: "เต็มแผ่น 4x6 🖼️", emoji: "🖼️", desc: "ถ่าย 4 รูป เต็มแผ่น 4x6", recommended: true, needsCount: 4 },
 ];

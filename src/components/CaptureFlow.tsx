@@ -13,7 +13,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
   const streamRef = useRef<MediaStream | null>(null);
   const [phase, setPhase] = useState<"init" | "preview" | "countdown" | "flash" | "review" | "done" | "error">("init");
   const [shotIndex, setShotIndex] = useState(0); // 0..3
-  const [count, setCount] = useState(5);
+  const [count, setCount] = useState(3);
   const [thumbs, setThumbs] = useState<string[]>([]);
   const [blobs, setBlobs] = useState<Blob[]>([]);
   const [errMsg, setErrMsg] = useState("");
@@ -81,7 +81,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
 
   function beginCountdown() {
     setPhase("countdown");
-    setCount(5);
+    setCount(3);
   }
 
   // Countdown ticker
