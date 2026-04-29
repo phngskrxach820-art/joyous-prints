@@ -547,29 +547,44 @@ function SessionPage() {
 
           {gifOutputUrl && <link rel="prefetch" href={gifOutputUrl} />}
 
-          {/* Print preview modal */}
-          {printOpen && (
+          {/* Upsell modal */}
+          {upsellOpen && (
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur flex items-center justify-center p-4 animate-fade-in">
-              <div className="bg-card max-w-2xl w-full rounded-3xl p-6 shadow-2xl">
-                <h3 className="font-heading font-bold text-xl mb-4">ตัวอย่างก่อนปริ้นท์</h3>
-                <img src={photoOutputUrl} alt="preview" className="w-full rounded-xl mb-4 border border-border" />
-                <p className="text-xs text-muted-foreground mb-4">
-                  4×6 นิ้ว · 300 DPI · {cfg?.printOrientation === "portrait" ? "แนวตั้ง" : "แนวนอน"}
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setPrintOpen(false)}
-                    className="flex-1 h-12 rounded-full border border-border font-semibold"
-                  >
-                    ← กลับ
-                  </button>
-                  <button
-                    onClick={doPrint}
-                    className="flex-1 h-12 rounded-full bg-primary text-primary-foreground font-semibold inline-flex items-center justify-center gap-2"
-                  >
-                    <Printer className="h-4 w-4" /> ปริ้นท์
-                  </button>
+              <div className="bg-card max-w-md w-full rounded-3xl p-6 shadow-2xl border-2 border-primary">
+                <div className="inline-block px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-bold mb-3">
+                  🔥 ข้อเสนอพิเศษ
                 </div>
+                <h3 className="font-heading font-bold text-2xl mb-3">พิมพ์แผ่นที่ 2 เพิ่มไหม?</h3>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-4">
+                  <div
+                    className="h-full bg-primary transition-[width] duration-100 ease-linear"
+                    style={{ width: `${(upsellRemainingMs / 30000) * 100}%` }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <span className="line-through">ปกติ 69.-</span>
+                </p>
+                <p className="text-xl font-heading font-bold mb-5">เพียง 30.- เท่านั้น! 🎉</p>
+                {secondPrintMessage ? (
+                  <p className="text-center font-semibold text-primary animate-pulse py-3">
+                    {secondPrintMessage}
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={acceptSecondPrint}
+                      className="w-full h-12 rounded-full bg-primary text-primary-foreground font-semibold hover:scale-[1.02] transition"
+                    >
+                      รับเลย! +30.- 🙌
+                    </button>
+                    <button
+                      onClick={closeUpsell}
+                      className="w-full h-12 rounded-full border border-border font-semibold"
+                    >
+                      ไม่ขอบคุณ
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
