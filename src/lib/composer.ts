@@ -163,7 +163,7 @@ export async function renderLayoutA(photos: string[], filter: string = "none"): 
   return canvasToBlob(canvas);
 }
 
-/** Layout B — เต็มแผ่น 4x6 — 1844x1240, 2x2 grid */
+/** Layout B — เต็มแผ่น 4x6 — 1844x1240 landscape, 4 portrait photos in a row */
 export async function renderLayoutB(photos: string[], filter: string = "none"): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1844;
@@ -172,10 +172,17 @@ export async function renderLayoutB(photos: string[], filter: string = "none"): 
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, 1844, 1240);
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
-  drawCoverFiltered(ctx, imgs[0], 22, 20, 900, 600, filter);
-  drawCoverFiltered(ctx, imgs[1], 942, 20, 900, 600, filter);
-  drawCoverFiltered(ctx, imgs[2], 22, 640, 900, 600, filter);
-  drawCoverFiltered(ctx, imgs[3], 942, 640, 900, 600, filter);
+  // 4 portrait slots in a row. Sheet 1844x1240. Margins + gaps.
+  const marginX = 30;
+  const marginY = 40;
+  const footerH = 100;
+  const gap = 16;
+  const slotW = (1844 - marginX * 2 - gap * 3) / 4; // ~437
+  const slotH = 1240 - marginY * 2 - footerH;       // ~1060
+  for (let i = 0; i < 4; i++) {
+    const x = marginX + i * (slotW + gap);
+    drawCoverFiltered(ctx, imgs[i], x, marginY, slotW, slotH, filter);
+  }
   // Watermark dark on white
   ctx.save();
   ctx.font = "500 22px 'Noto Sans Thai', sans-serif";
