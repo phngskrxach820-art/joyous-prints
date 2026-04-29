@@ -224,7 +224,7 @@ export async function renderLayoutC(photos: string[], filter: string = "none"): 
 }
 
 /** Layout D — GIF 800x600, 150ms/frame, looped */
-export async function renderLayoutD(photos: string[]): Promise<Blob> {
+export async function renderLayoutD(photos: string[], filter: string = "none"): Promise<Blob> {
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
   const gif = new GIF({
     workers: 2,
@@ -240,7 +240,7 @@ export async function renderLayoutD(photos: string[]): Promise<Blob> {
     const cx = c.getContext("2d")!;
     cx.fillStyle = "#000";
     cx.fillRect(0, 0, 800, 600);
-    drawCover(cx, img, 0, 0, 800, 600);
+    drawCoverFiltered(cx, img, 0, 0, 800, 600, filter);
     // Watermark
     cx.font = "500 18px 'Noto Sans Thai', sans-serif";
     cx.fillStyle = "rgba(255,255,255,0.7)";
