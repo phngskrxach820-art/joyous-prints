@@ -162,24 +162,147 @@ function SessionPage() {
     }, 10000);
   }
 
-  function openPrint() {
-    setPrintOpen(true);
+  function urlToCanvas(url: string): Promise<HTMLCanvasElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const ctx = c.getContext("2d");
+        if (!ctx) return reject(new Error("no ctx"));
+        ctx.drawImage(img, 0, 0);
+        resolve(c);
+      };
+      img.onerror = () => reject(new Error("image load failed"));
+      img.src = url;
+    });
   }
-  function doPrint() {
-    const w = window.open("", "_blank", "width=900,height=700");
-    if (!w) return;
-    const orient = cfg?.printOrientation === "portrait" ? "portrait" : "landscape";
-    w.document.write(`
-      <html><head><title>Print</title>
-      <style>
-        @page { size: 4in 6in ${orient}; margin: 0; }
-        body { margin: 0; }
-        img { width: 100%; height: 100%; object-fit: contain; display: block; }
-      </style>
-      </head><body><img src="${photoOutputUrl}" onload="window.print(); setTimeout(() => window.close(), 500)"/></body></html>
-    `);
-    w.document.close();
-    setPrintOpen(false);
+
+  function printCanvas(canvas: HTMLCanvasElement): Window | null {
+    const dataUrl = canvas.toDataURL("image/jpeg", 1.0);
+    const win = window.open("", "_blank");
+    if (!win) return null;
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  @page {
+    size: 100mm 148mm portrait;
+    margin: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  html, body {
+    width: 100mm;
+    height: 148mm;
+    overflow: hidden;
+    background: white;
+  }
+  img {
+    width: 100mm !important;
+    height: 148mm !important;
+    display: block;
+    object-fit: fill;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+  @media print {
+    html, body { width: 100mm; height: 148mm; }
+    img { width: 100mm !important; height: 148mm !important; }
+  }
+</style>
+</head>
+<body>
+<img src="${dataUrl}">
+<script>
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      window.focus();
+      window.print();
+      setTimeout(() => window.close(), 1500);
+    }, 600);
+  });
+<\/script>
+</body>
+</html>`);
+    win.document.close();
+    return win;
+  }
+
+  function markPrintFinished() {
+    setIsPrinting(false);
+  }
+
+  async function doPrintOnce() {
+    try {
+      const canvas = await urlToCanvas(photoOutputUrl);
+      const win = printCanvas(canvas);
+      if (win) {
+        try {
+          win.addEventListener("afterprint", markPrintFinished);
+        } catch {
+          // cross-origin; rely on safety timer
+        }
+      }
+      // safety fallback
+      setTimeout(markPrintFinished, 12000);
+    } catch (e) {
+      console.error(e);
+      toast.error("เปิดหน้าปริ้นท์ไม่ได้");
+      setIsPrinting(false);
+    }
+  }
+
+  async function handlePrintClick() {
+    setIsPrinting(true);
+    setHasPrintedOnce(true);
+    await doPrintOnce();
+    if (upsellOpenTimerRef.current) clearTimeout(upsellOpenTimerRef.current);
+    upsellOpenTimerRef.current = setTimeout(() => {
+      setUpsellRemainingMs(30000);
+      setUpsellOpen(true);
+      if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
+      upsellIntervalRef.current = setInterval(() => {
+        setUpsellRemainingMs((prev) => {
+          const next = prev - 100;
+          if (next <= 0) {
+            if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
+            setUpsellOpen(false);
+            return 0;
+          }
+          return next;
+        });
+      }, 100);
+    }, 1000);
+  }
+
+  function closeUpsell() {
+    if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
+    setUpsellOpen(false);
+  }
+
+  async function acceptSecondPrint() {
+    if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
+    setSecondPrintMessage("กำลังพิมพ์แผ่นที่ 2... 🖨️");
+    setIsPrinting(true);
+    try {
+      const canvas = await urlToCanvas(photoOutputUrl);
+      const win = printCanvas(canvas);
+      if (win) {
+        try { win.addEventListener("afterprint", markPrintFinished); } catch {}
+      }
+      setTimeout(markPrintFinished, 12000);
+    } catch (e) {
+      console.error(e);
+    }
+    setTimeout(() => {
+      setUpsellOpen(false);
+      setSecondPrintMessage(null);
+    }, 2000);
   }
 
   return (
