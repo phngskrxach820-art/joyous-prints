@@ -151,6 +151,16 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
 
   return (
     <div className="relative min-h-[80vh] flex flex-col items-center">
+      {/* Back button */}
+      {onBack && phase === "preview" && (
+        <button
+          onClick={onBack}
+          className="absolute top-4 left-4 z-20 inline-flex items-center gap-1 px-3 py-2 rounded-full bg-card/80 backdrop-blur border border-border text-xs font-semibold hover:bg-card"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> ถ่ายใหม่
+        </button>
+      )}
+
       {/* Progress */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-full bg-card/80 backdrop-blur border border-border text-sm font-semibold">
         รูปที่ {Math.min(shotIndex + 1, totalShots)}/{totalShots}
