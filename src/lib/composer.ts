@@ -82,7 +82,7 @@ async function loadFrame(): Promise<HTMLImageElement | null> {
 }
 
 /** Layout A — แบ่งให้เพื่อน — 1240x1844 portrait, 2 identical strips side by side, cut line in middle */
-export async function renderLayoutA(photos: string[]): Promise<Blob> {
+export async function renderLayoutA(photos: string[], filter: string = "none"): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1240;
   canvas.height = 1844;
@@ -107,7 +107,7 @@ export async function renderLayoutA(photos: string[]): Promise<Blob> {
   function drawStripPhotos(xOffset: number, stripW: number) {
     for (let i = 0; i < 4; i++) {
       const y = photoTop + i * (slotH + slotGap);
-      drawCover(ctx, imgs[i % imgs.length], xOffset + 20, y, stripW - 40, slotH);
+      drawCoverFiltered(ctx, imgs[i % imgs.length], xOffset + 20, y, stripW - 40, slotH, filter);
     }
   }
 
