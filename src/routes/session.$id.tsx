@@ -38,7 +38,20 @@ function SessionPage() {
   const [gifOutputUrl, setGifOutputUrl] = useState<string>("");
   const [photoQr, setPhotoQr] = useState<string>("");
   const [gifQr, setGifQr] = useState<string>("");
-  const [printOpen, setPrintOpen] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [hasPrintedOnce, setHasPrintedOnce] = useState(false);
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [upsellRemainingMs, setUpsellRemainingMs] = useState(30000);
+  const [secondPrintMessage, setSecondPrintMessage] = useState<string | null>(null);
+  const upsellIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const upsellOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
+      if (upsellOpenTimerRef.current) clearTimeout(upsellOpenTimerRef.current);
+    };
+  }, []);
 
   const cfg = typeof window !== "undefined" ? loadConfig() : null;
   const price = cfg?.price ?? 69;
