@@ -197,7 +197,7 @@ export async function renderLayoutB(photos: string[], filter: string = "none"): 
 }
 
 /** Layout C — ฟิล์มสตริป — 1240x1844 portrait */
-export async function renderLayoutC(photos: string[]): Promise<Blob> {
+export async function renderLayoutC(photos: string[], filter: string = "none"): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1240;
   canvas.height = 1844;
@@ -208,10 +208,10 @@ export async function renderLayoutC(photos: string[]): Promise<Blob> {
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(40, 40, 1160, 1764);
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
-  drawCover(ctx, imgs[0], 40, 40, 1160, 380);
-  drawCover(ctx, imgs[1], 40, 440, 1160, 380);
-  drawCover(ctx, imgs[2], 40, 840, 1160, 380);
-  drawCover(ctx, imgs[3], 40, 1240, 1160, 380);
+  drawCoverFiltered(ctx, imgs[0], 40, 40, 1160, 380, filter);
+  drawCoverFiltered(ctx, imgs[1], 40, 440, 1160, 380, filter);
+  drawCoverFiltered(ctx, imgs[2], 40, 840, 1160, 380, filter);
+  drawCoverFiltered(ctx, imgs[3], 40, 1240, 1160, 380, filter);
   // Watermark on bottom white area
   ctx.save();
   ctx.font = "500 22px 'Noto Sans Thai', sans-serif";
