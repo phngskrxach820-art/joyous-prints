@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera as CamIcon, RefreshCw } from "lucide-react";
+import { Camera as CamIcon, RefreshCw, ArrowLeft } from "lucide-react";
 import { tick, shutter } from "@/lib/audio";
 
 type Props = {
   onComplete: (photos: Blob[]) => void;
   totalShots?: number;
+  onBack?: () => void;
 };
 
-export function CaptureFlow({ onComplete, totalShots = 4 }: Props) {
+export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [phase, setPhase] = useState<"init" | "preview" | "countdown" | "flash" | "review" | "done" | "error">("init");
