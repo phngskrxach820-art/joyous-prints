@@ -36,6 +36,21 @@ function drawCover(
   ctx.restore();
 }
 
+function drawCoverFiltered(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  filter: string,
+) {
+  const prev = ctx.filter;
+  ctx.filter = filter || "none";
+  drawCover(ctx, img, x, y, w, h);
+  ctx.filter = prev;
+}
+
 function watermark(ctx: CanvasRenderingContext2D, x: number, y: number, align: CanvasTextAlign = "center") {
   ctx.save();
   ctx.font = "500 22px 'Noto Sans Thai', 'Inter', sans-serif";
