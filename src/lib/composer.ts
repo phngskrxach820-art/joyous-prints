@@ -36,6 +36,21 @@ function drawCover(
   ctx.restore();
 }
 
+function drawCoverFiltered(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  filter: string,
+) {
+  const prev = ctx.filter;
+  ctx.filter = filter || "none";
+  drawCover(ctx, img, x, y, w, h);
+  ctx.filter = prev;
+}
+
 function watermark(ctx: CanvasRenderingContext2D, x: number, y: number, align: CanvasTextAlign = "center") {
   ctx.save();
   ctx.font = "500 22px 'Noto Sans Thai', 'Inter', sans-serif";
@@ -67,7 +82,7 @@ async function loadFrame(): Promise<HTMLImageElement | null> {
 }
 
 /** Layout A — แบ่งให้เพื่อน — 1240x1844 portrait, 2 identical strips side by side, cut line in middle */
-export async function renderLayoutA(photos: string[]): Promise<Blob> {
+export async function renderLayoutA(photos: string[], filter: string = "none"): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1240;
   canvas.height = 1844;
@@ -92,7 +107,7 @@ export async function renderLayoutA(photos: string[]): Promise<Blob> {
   function drawStripPhotos(xOffset: number, stripW: number) {
     for (let i = 0; i < 4; i++) {
       const y = photoTop + i * (slotH + slotGap);
-      drawCover(ctx, imgs[i % imgs.length], xOffset + 20, y, stripW - 40, slotH);
+      drawCoverFiltered(ctx, imgs[i % imgs.length], xOffset + 20, y, stripW - 40, slotH, filter);
     }
   }
 
@@ -149,7 +164,7 @@ export async function renderLayoutA(photos: string[]): Promise<Blob> {
 }
 
 /** Layout B — เต็มแผ่น 4x6 — 1844x1240, 2x2 grid */
-export async function renderLayoutB(photos: string[]): Promise<Blob> {
+export async function renderLayoutB(photos: string[], filter: string = "none"): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1844;
   canvas.height = 1240;
@@ -157,10 +172,10 @@ export async function renderLayoutB(photos: string[]): Promise<Blob> {
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, 1844, 1240);
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
-  drawCover(ctx, imgs[0], 22, 20, 900, 600);
-  drawCover(ctx, imgs[1], 942, 20, 900, 600);
-  drawCover(ctx, imgs[2], 22, 640, 900, 600);
-  drawCover(ctx, imgs[3], 942, 640, 900, 600);
+  drawCoverFiltered(ctx, imgs[0], 22, 20, 900, 600, filter);
+  drawCoverFiltered(ctx, imgs[1], 942, 20, 900, 600, filter);
+  drawCoverFiltered(ctx, imgs[2], 22, 640, 900, 600, filter);
+  drawCoverFiltered(ctx, imgs[3], 942, 640, 900, 600, filter);
   // Watermark dark on white
   ctx.save();
   ctx.font = "500 22px 'Noto Sans Thai', sans-serif";
@@ -182,7 +197,7 @@ export async function renderLayoutB(photos: string[]): Promise<Blob> {
 }
 
 /** Layout C — ฟิล์มสตริป — 1240x1844 portrait */
-export async function renderLayoutC(photos: string[]): Promise<Blob> {
+export async function renderLayoutC(photos: string[], filter: string = "none"): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1240;
   canvas.height = 1844;
@@ -193,10 +208,10 @@ export async function renderLayoutC(photos: string[]): Promise<Blob> {
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(40, 40, 1160, 1764);
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
-  drawCover(ctx, imgs[0], 40, 40, 1160, 380);
-  drawCover(ctx, imgs[1], 40, 440, 1160, 380);
-  drawCover(ctx, imgs[2], 40, 840, 1160, 380);
-  drawCover(ctx, imgs[3], 40, 1240, 1160, 380);
+  drawCoverFiltered(ctx, imgs[0], 40, 40, 1160, 380, filter);
+  drawCoverFiltered(ctx, imgs[1], 40, 440, 1160, 380, filter);
+  drawCoverFiltered(ctx, imgs[2], 40, 840, 1160, 380, filter);
+  drawCoverFiltered(ctx, imgs[3], 40, 1240, 1160, 380, filter);
   // Watermark on bottom white area
   ctx.save();
   ctx.font = "500 22px 'Noto Sans Thai', sans-serif";
@@ -209,7 +224,7 @@ export async function renderLayoutC(photos: string[]): Promise<Blob> {
 }
 
 /** Layout D — GIF 800x600, 150ms/frame, looped */
-export async function renderLayoutD(photos: string[]): Promise<Blob> {
+export async function renderLayoutD(photos: string[], filter: string = "none"): Promise<Blob> {
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
   const gif = new GIF({
     workers: 2,
@@ -225,7 +240,7 @@ export async function renderLayoutD(photos: string[]): Promise<Blob> {
     const cx = c.getContext("2d")!;
     cx.fillStyle = "#000";
     cx.fillRect(0, 0, 800, 600);
-    drawCover(cx, img, 0, 0, 800, 600);
+    drawCoverFiltered(cx, img, 0, 0, 800, 600, filter);
     // Watermark
     cx.font = "500 18px 'Noto Sans Thai', sans-serif";
     cx.fillStyle = "rgba(255,255,255,0.7)";
@@ -247,12 +262,12 @@ function canvasToBlob(c: HTMLCanvasElement, type = "image/jpeg", q = 0.97): Prom
   );
 }
 
-export async function renderLayout(layout: LayoutId, photos: string[]): Promise<Blob> {
+export async function renderLayout(layout: LayoutId, photos: string[], filter: string = "none"): Promise<Blob> {
   switch (layout) {
-    case "A": return renderLayoutA(photos);
-    case "B": return renderLayoutB(photos);
-    case "C": return renderLayoutC(photos);
-    case "D": return renderLayoutD(photos);
+    case "A": return renderLayoutA(photos, filter);
+    case "B": return renderLayoutB(photos, filter);
+    case "C": return renderLayoutC(photos, filter);
+    case "D": return renderLayoutD(photos, filter);
   }
 }
 
