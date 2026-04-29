@@ -228,10 +228,10 @@ function SessionPage() {
             })}
           </div>
 
-          {/* Live preview grid */}
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-8">
+          {/* Live preview grid — bigger portrait thumbs */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
             {photoUrls.map((u, i) => (
-              <div key={i} className="aspect-video bg-muted rounded-lg overflow-hidden">
+              <div key={i} className="aspect-[3/4] bg-muted rounded-xl overflow-hidden shadow-md">
                 <img
                   src={u}
                   alt={`รูปที่ ${i + 1}`}
