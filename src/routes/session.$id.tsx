@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, Loader2, Printer, Sparkles, Star, Check } from "lucide-react";
@@ -38,7 +38,20 @@ function SessionPage() {
   const [gifOutputUrl, setGifOutputUrl] = useState<string>("");
   const [photoQr, setPhotoQr] = useState<string>("");
   const [gifQr, setGifQr] = useState<string>("");
-  const [printOpen, setPrintOpen] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [hasPrintedOnce, setHasPrintedOnce] = useState(false);
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [upsellRemainingMs, setUpsellRemainingMs] = useState(30000);
+  const [secondPrintMessage, setSecondPrintMessage] = useState<string | null>(null);
+  const upsellIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const upsellOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
+      if (upsellOpenTimerRef.current) clearTimeout(upsellOpenTimerRef.current);
+    };
+  }, []);
 
   const cfg = typeof window !== "undefined" ? loadConfig() : null;
   const price = cfg?.price ?? 69;
@@ -149,24 +162,147 @@ function SessionPage() {
     }, 10000);
   }
 
-  function openPrint() {
-    setPrintOpen(true);
+  function urlToCanvas(url: string): Promise<HTMLCanvasElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const ctx = c.getContext("2d");
+        if (!ctx) return reject(new Error("no ctx"));
+        ctx.drawImage(img, 0, 0);
+        resolve(c);
+      };
+      img.onerror = () => reject(new Error("image load failed"));
+      img.src = url;
+    });
   }
-  function doPrint() {
-    const w = window.open("", "_blank", "width=900,height=700");
-    if (!w) return;
-    const orient = cfg?.printOrientation === "portrait" ? "portrait" : "landscape";
-    w.document.write(`
-      <html><head><title>Print</title>
-      <style>
-        @page { size: 4in 6in ${orient}; margin: 0; }
-        body { margin: 0; }
-        img { width: 100%; height: 100%; object-fit: contain; display: block; }
-      </style>
-      </head><body><img src="${photoOutputUrl}" onload="window.print(); setTimeout(() => window.close(), 500)"/></body></html>
-    `);
-    w.document.close();
-    setPrintOpen(false);
+
+  function printCanvas(canvas: HTMLCanvasElement): Window | null {
+    const dataUrl = canvas.toDataURL("image/jpeg", 1.0);
+    const win = window.open("", "_blank");
+    if (!win) return null;
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  @page {
+    size: 100mm 148mm portrait;
+    margin: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  html, body {
+    width: 100mm;
+    height: 148mm;
+    overflow: hidden;
+    background: white;
+  }
+  img {
+    width: 100mm !important;
+    height: 148mm !important;
+    display: block;
+    object-fit: fill;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+  @media print {
+    html, body { width: 100mm; height: 148mm; }
+    img { width: 100mm !important; height: 148mm !important; }
+  }
+</style>
+</head>
+<body>
+<img src="${dataUrl}">
+<script>
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      window.focus();
+      window.print();
+      setTimeout(() => window.close(), 1500);
+    }, 600);
+  });
+<\/script>
+</body>
+</html>`);
+    win.document.close();
+    return win;
+  }
+
+  function markPrintFinished() {
+    setIsPrinting(false);
+  }
+
+  async function doPrintOnce() {
+    try {
+      const canvas = await urlToCanvas(photoOutputUrl);
+      const win = printCanvas(canvas);
+      if (win) {
+        try {
+          win.addEventListener("afterprint", markPrintFinished);
+        } catch {
+          // cross-origin; rely on safety timer
+        }
+      }
+      // safety fallback
+      setTimeout(markPrintFinished, 12000);
+    } catch (e) {
+      console.error(e);
+      toast.error("เปิดหน้าปริ้นท์ไม่ได้");
+      setIsPrinting(false);
+    }
+  }
+
+  async function handlePrintClick() {
+    setIsPrinting(true);
+    setHasPrintedOnce(true);
+    await doPrintOnce();
+    if (upsellOpenTimerRef.current) clearTimeout(upsellOpenTimerRef.current);
+    upsellOpenTimerRef.current = setTimeout(() => {
+      setUpsellRemainingMs(30000);
+      setUpsellOpen(true);
+      if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
+      upsellIntervalRef.current = setInterval(() => {
+        setUpsellRemainingMs((prev) => {
+          const next = prev - 100;
+          if (next <= 0) {
+            if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
+            setUpsellOpen(false);
+            return 0;
+          }
+          return next;
+        });
+      }, 100);
+    }, 1000);
+  }
+
+  function closeUpsell() {
+    if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
+    setUpsellOpen(false);
+  }
+
+  async function acceptSecondPrint() {
+    if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
+    setSecondPrintMessage("กำลังพิมพ์แผ่นที่ 2... 🖨️");
+    setIsPrinting(true);
+    try {
+      const canvas = await urlToCanvas(photoOutputUrl);
+      const win = printCanvas(canvas);
+      if (win) {
+        try { win.addEventListener("afterprint", markPrintFinished); } catch {}
+      }
+      setTimeout(markPrintFinished, 12000);
+    } catch (e) {
+      console.error(e);
+    }
+    setTimeout(() => {
+      setUpsellOpen(false);
+      setSecondPrintMessage(null);
+    }, 2000);
   }
 
   return (
@@ -357,11 +493,21 @@ function SessionPage() {
             <p className="text-2xl mb-2">🖨️</p>
             <h3 className="font-heading font-bold text-lg mb-3">ปริ้นท์รับเลย</h3>
             <button
-              onClick={openPrint}
+              onClick={handlePrintClick}
               className="w-full h-12 rounded-full bg-primary text-primary-foreground font-semibold hover:scale-[1.02] transition inline-flex items-center justify-center gap-2"
             >
               <Printer className="h-4 w-4" /> ปริ้นท์รับเลย 🖨️
             </button>
+            {isPrinting && (
+              <p className="mt-4 text-sm font-semibold text-primary animate-pulse">
+                🖨️ กำลังพิมพ์อยู่นะ รอแปปนึง...
+              </p>
+            )}
+            {!isPrinting && hasPrintedOnce && (
+              <p className="mt-4 text-sm font-semibold text-primary">
+                ✅ สั่งพิมพ์แล้ว!
+              </p>
+            )}
           </div>
 
           {/* Scan to save section (bottom) */}
@@ -401,29 +547,44 @@ function SessionPage() {
 
           {gifOutputUrl && <link rel="prefetch" href={gifOutputUrl} />}
 
-          {/* Print preview modal */}
-          {printOpen && (
+          {/* Upsell modal */}
+          {upsellOpen && (
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur flex items-center justify-center p-4 animate-fade-in">
-              <div className="bg-card max-w-2xl w-full rounded-3xl p-6 shadow-2xl">
-                <h3 className="font-heading font-bold text-xl mb-4">ตัวอย่างก่อนปริ้นท์</h3>
-                <img src={photoOutputUrl} alt="preview" className="w-full rounded-xl mb-4 border border-border" />
-                <p className="text-xs text-muted-foreground mb-4">
-                  4×6 นิ้ว · 300 DPI · {cfg?.printOrientation === "portrait" ? "แนวตั้ง" : "แนวนอน"}
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setPrintOpen(false)}
-                    className="flex-1 h-12 rounded-full border border-border font-semibold"
-                  >
-                    ← กลับ
-                  </button>
-                  <button
-                    onClick={doPrint}
-                    className="flex-1 h-12 rounded-full bg-primary text-primary-foreground font-semibold inline-flex items-center justify-center gap-2"
-                  >
-                    <Printer className="h-4 w-4" /> ปริ้นท์
-                  </button>
+              <div className="bg-card max-w-md w-full rounded-3xl p-6 shadow-2xl border-2 border-primary">
+                <div className="inline-block px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-bold mb-3">
+                  🔥 ข้อเสนอพิเศษ
                 </div>
+                <h3 className="font-heading font-bold text-2xl mb-3">พิมพ์แผ่นที่ 2 เพิ่มไหม?</h3>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-4">
+                  <div
+                    className="h-full bg-primary transition-[width] duration-100 ease-linear"
+                    style={{ width: `${(upsellRemainingMs / 30000) * 100}%` }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <span className="line-through">ปกติ 69.-</span>
+                </p>
+                <p className="text-xl font-heading font-bold mb-5">เพียง 30.- เท่านั้น! 🎉</p>
+                {secondPrintMessage ? (
+                  <p className="text-center font-semibold text-primary animate-pulse py-3">
+                    {secondPrintMessage}
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={acceptSecondPrint}
+                      className="w-full h-12 rounded-full bg-primary text-primary-foreground font-semibold hover:scale-[1.02] transition"
+                    >
+                      รับเลย! +30.- 🙌
+                    </button>
+                    <button
+                      onClick={closeUpsell}
+                      className="w-full h-12 rounded-full border border-border font-semibold"
+                    >
+                      ไม่ขอบคุณ
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
