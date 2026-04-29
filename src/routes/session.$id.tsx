@@ -15,16 +15,15 @@ export const Route = createFileRoute("/session/$id")({
 
 type Step = "format" | "capture" | "uploading" | "filter" | "payment" | "rendering" | "delivery";
 
-type FilterId = "none" | "film" | "soft" | "cool" | "bw" | "vintage";
+type FilterId = "none" | "film" | "soft" | "bw" | "vintage";
 const FILTERS: Record<FilterId, { label: string; css: string }> = {
   none:    { label: "ปกติ",       css: "none" },
   film:    { label: "ฟิล์ม 🎞️",   css: "sepia(30%) contrast(95%) brightness(105%) saturate(85%)" },
   soft:    { label: "นุ่มๆ 🌸",   css: "brightness(110%) saturate(80%) contrast(90%) hue-rotate(5deg)" },
-  cool:    { label: "เย็นๆ 🩵",   css: "saturate(70%) brightness(100%) hue-rotate(190deg) contrast(95%)" },
   bw:      { label: "ขาวดำ 🖤",   css: "grayscale(100%) contrast(105%)" },
   vintage: { label: "วินเทจ 🟤",  css: "sepia(50%) brightness(95%) contrast(90%) saturate(75%)" },
 };
-const FILTER_ORDER: FilterId[] = ["none", "film", "soft", "cool", "bw", "vintage"];
+const FILTER_ORDER: FilterId[] = ["none", "film", "soft", "bw", "vintage"];
 
 function SessionPage() {
   const { id } = Route.useParams();
