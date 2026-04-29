@@ -164,7 +164,7 @@ export async function renderLayoutA(photos: string[], filter: string = "none"): 
 }
 
 /** Layout B — เต็มแผ่น 4x6 — 1844x1240, 2x2 grid */
-export async function renderLayoutB(photos: string[]): Promise<Blob> {
+export async function renderLayoutB(photos: string[], filter: string = "none"): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1844;
   canvas.height = 1240;
@@ -172,10 +172,10 @@ export async function renderLayoutB(photos: string[]): Promise<Blob> {
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, 1844, 1240);
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
-  drawCover(ctx, imgs[0], 22, 20, 900, 600);
-  drawCover(ctx, imgs[1], 942, 20, 900, 600);
-  drawCover(ctx, imgs[2], 22, 640, 900, 600);
-  drawCover(ctx, imgs[3], 942, 640, 900, 600);
+  drawCoverFiltered(ctx, imgs[0], 22, 20, 900, 600, filter);
+  drawCoverFiltered(ctx, imgs[1], 942, 20, 900, 600, filter);
+  drawCoverFiltered(ctx, imgs[2], 22, 640, 900, 600, filter);
+  drawCoverFiltered(ctx, imgs[3], 942, 640, 900, 600, filter);
   // Watermark dark on white
   ctx.save();
   ctx.font = "500 22px 'Noto Sans Thai', sans-serif";
