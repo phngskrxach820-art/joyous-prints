@@ -493,11 +493,21 @@ function SessionPage() {
             <p className="text-2xl mb-2">🖨️</p>
             <h3 className="font-heading font-bold text-lg mb-3">ปริ้นท์รับเลย</h3>
             <button
-              onClick={openPrint}
+              onClick={handlePrintClick}
               className="w-full h-12 rounded-full bg-primary text-primary-foreground font-semibold hover:scale-[1.02] transition inline-flex items-center justify-center gap-2"
             >
               <Printer className="h-4 w-4" /> ปริ้นท์รับเลย 🖨️
             </button>
+            {isPrinting && (
+              <p className="mt-4 text-sm font-semibold text-primary animate-pulse">
+                🖨️ กำลังพิมพ์อยู่นะ รอแปปนึง...
+              </p>
+            )}
+            {!isPrinting && hasPrintedOnce && (
+              <p className="mt-4 text-sm font-semibold text-primary">
+                ✅ สั่งพิมพ์แล้ว!
+              </p>
+            )}
           </div>
 
           {/* Scan to save section (bottom) */}
