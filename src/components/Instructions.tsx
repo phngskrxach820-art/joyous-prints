@@ -9,24 +9,24 @@ type Props = {
 
 const steps = [
   {
-    icon: Camera,
-    title: "เดินเข้ากรอบ แล้วยิ้มได้เลย",
-    body: "ระบบนับ 5-4-3-2-1 แล้วถ่ายให้เอง ถ่ายทั้งหมด 4 รูปติดกัน",
-    visual: (
-      <div className="aspect-square w-full rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-4xl font-bold text-primary">
-        5 4 3 2 1
-      </div>
-    ),
-  },
-  {
     icon: Sparkles,
     title: "อยากได้แบบไหน?",
-    body: "เลือกได้เลยว่าจะเอา 2 แถบแบ่งเพื่อน คอลลาจเต็มแผ่น ฟิล์มสตริป หรือ GIF",
+    body: "เลือกได้เลยว่าจะเอา 2 แถบแบ่งเพื่อน (3 รูป) หรือคอลลาจเต็มแผ่น 4x6 (6 รูป)",
     visual: (
       <div className="aspect-square w-full rounded-2xl bg-gradient-to-br from-secondary/20 to-primary/20 flex items-center justify-center gap-2 p-4">
         <div className="flex-1 aspect-[2/3] rounded-lg bg-card/80 border border-border" />
         <div className="flex-1 aspect-[2/3] rounded-lg bg-primary border-2 border-primary scale-110 shadow-lg" />
         <div className="flex-1 aspect-[2/3] rounded-lg bg-card/80 border border-border" />
+      </div>
+    ),
+  },
+  {
+    icon: Camera,
+    title: "เดินเข้ากรอบ แล้วยิ้มได้เลย",
+    body: "ระบบนับ 5-4-3-2-1 แล้วถ่ายให้เอง ถ่าย 3 หรือ 6 รูปตามแบบที่เลือก",
+    visual: (
+      <div className="aspect-square w-full rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-4xl font-bold text-primary">
+        5 4 3 2 1
       </div>
     ),
   },
