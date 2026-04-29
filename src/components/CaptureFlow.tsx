@@ -101,15 +101,28 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
     shutter();
     const video = videoRef.current;
     if (!video) return;
-    const w = video.videoWidth;
-    const h = video.videoHeight;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    // Crop to portrait 3:4 from center of landscape video
+    const targetRatio = 3 / 4;
+    let cropW = vh * targetRatio;
+    let cropH = vh;
+    if (cropW > vw) {
+      cropW = vw;
+      cropH = vw / targetRatio;
+    }
+    const sx = (vw - cropW) / 2;
+    const sy = (vh - cropH) / 2;
+    const outW = 900;
+    const outH = 1200;
     const c = document.createElement("canvas");
-    c.width = w;
-    c.height = h;
+    c.width = outW;
+    c.height = outH;
     const ctx = c.getContext("2d")!;
-    ctx.translate(w, 0);
+    // mirror selfie
+    ctx.translate(outW, 0);
     ctx.scale(-1, 1);
-    ctx.drawImage(video, 0, 0, w, h);
+    ctx.drawImage(video, sx, sy, cropW, cropH, 0, 0, outW, outH);
     const blob: Blob = await new Promise((res, rej) =>
       c.toBlob((b) => (b ? res(b) : rej()), "image/jpeg", 0.92),
     );
