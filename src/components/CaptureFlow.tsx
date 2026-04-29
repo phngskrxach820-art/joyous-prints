@@ -207,9 +207,10 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
           style={{ transform: "scaleX(-1)" }} // mirror like a selfie cam
         />
 
-        {/* Portrait crop guides — show users the 3:4 area that will be captured */}
-        <div className="absolute inset-y-0 left-0 bg-black/60 pointer-events-none" style={{ width: "calc((100% - (100% * 3 / 4 * 9 / 16)) / 2)" }} />
-        <div className="absolute inset-y-0 right-0 bg-black/60 pointer-events-none" style={{ width: "calc((100% - (100% * 3 / 4 * 9 / 16)) / 2)" }} />
+        {/* Portrait crop guides — dim outside 3:4 area */}
+        <div className="absolute inset-y-0 left-0 bg-black/60 pointer-events-none" style={{ width: "28.9%" }} />
+        <div className="absolute inset-y-0 right-0 bg-black/60 pointer-events-none" style={{ width: "28.9%" }} />
+        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-2 border-white/70 rounded-xl pointer-events-none" style={{ width: "42.2%" }} />
 
         {/* Countdown */}
         {phase === "countdown" && count > 0 && (
