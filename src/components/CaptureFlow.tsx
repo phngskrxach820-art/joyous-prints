@@ -13,7 +13,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
   const streamRef = useRef<MediaStream | null>(null);
   const [phase, setPhase] = useState<"init" | "preview" | "countdown" | "flash" | "review" | "done" | "error">("init");
   const [shotIndex, setShotIndex] = useState(0); // 0..3
-  const [count, setCount] = useState(5);
+  const [count, setCount] = useState(3);
   const [thumbs, setThumbs] = useState<string[]>([]);
   const [blobs, setBlobs] = useState<Blob[]>([]);
   const [errMsg, setErrMsg] = useState("");
@@ -81,7 +81,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
 
   function beginCountdown() {
     setPhase("countdown");
-    setCount(5);
+    setCount(3);
   }
 
   // Countdown ticker
@@ -101,15 +101,28 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
     shutter();
     const video = videoRef.current;
     if (!video) return;
-    const w = video.videoWidth;
-    const h = video.videoHeight;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    // Crop to portrait 3:4 from center of landscape video
+    const targetRatio = 3 / 4;
+    let cropW = vh * targetRatio;
+    let cropH = vh;
+    if (cropW > vw) {
+      cropW = vw;
+      cropH = vw / targetRatio;
+    }
+    const sx = (vw - cropW) / 2;
+    const sy = (vh - cropH) / 2;
+    const outW = 900;
+    const outH = 1200;
     const c = document.createElement("canvas");
-    c.width = w;
-    c.height = h;
+    c.width = outW;
+    c.height = outH;
     const ctx = c.getContext("2d")!;
-    ctx.translate(w, 0);
+    // mirror selfie
+    ctx.translate(outW, 0);
     ctx.scale(-1, 1);
-    ctx.drawImage(video, 0, 0, w, h);
+    ctx.drawImage(video, sx, sy, cropW, cropH, 0, 0, outW, outH);
     const blob: Blob = await new Promise((res, rej) =>
       c.toBlob((b) => (b ? res(b) : rej()), "image/jpeg", 0.92),
     );
@@ -193,6 +206,11 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
           className="w-full h-full object-cover"
           style={{ transform: "scaleX(-1)" }} // mirror like a selfie cam
         />
+
+        {/* Portrait crop guides — dim outside 3:4 area */}
+        <div className="absolute inset-y-0 left-0 bg-black/60 pointer-events-none" style={{ width: "28.9%" }} />
+        <div className="absolute inset-y-0 right-0 bg-black/60 pointer-events-none" style={{ width: "28.9%" }} />
+        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-2 border-white/70 rounded-xl pointer-events-none" style={{ width: "42.2%" }} />
 
         {/* Countdown */}
         {phase === "countdown" && count > 0 && (
