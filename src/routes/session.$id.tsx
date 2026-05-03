@@ -303,6 +303,7 @@ function SessionPage() {
       {step === "capture" && (
         <CaptureFlow
           totalShots={LAYOUTS.find((l) => l.id === layout)?.needsCount ?? 4}
+          aspectRatio={layout === "A" ? 9 / 16 : 3 / 4}
           onComplete={handleCaptured}
           onBack={backFromCapture}
         />
