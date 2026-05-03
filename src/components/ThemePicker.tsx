@@ -6,36 +6,60 @@ import { FORMAT_META } from "@/components/FormatCard";
 type Props = {
   format: FormatId;
   onBack: () => void;
-  onPick: (frame: Frame) => void;
+  onPick: (frame: Frame | null) => void;
 };
 
 export function ThemePicker({ format, onBack, onPick }: Props) {
   const [frames, setFrames] = useState<Frame[]>([]);
+  const [selected, setSelected] = useState<string>("__placeholder__");
 
   useEffect(() => {
     const f = framesForFormat(format);
     setFrames(f);
-    if (f.length === 1) onPick(f[0]);
+    setSelected(f[0]?.id ?? "__placeholder__");
   }, [format]);
 
   const meta = FORMAT_META.find((m) => m.id === format);
 
-  if (frames.length <= 1) return null;
+  function confirm() {
+    const f = frames.find((x) => x.id === selected) ?? null;
+    onPick(f);
+  }
 
   return (
-    <main className="min-h-screen px-4 py-8 max-w-5xl mx-auto animate-fade-in">
-      <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
+    <main className="min-h-screen px-4 py-6 max-w-5xl mx-auto animate-fade-in flex flex-col">
+      <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ArrowLeft className="h-4 w-4" /> เปลี่ยนขนาด
       </button>
-      <h1 className="text-3xl md:text-4xl font-heading font-bold mb-8">
-        เลือกธีมกรอบสำหรับ {meta?.title} 🎨
+      <h1 className="text-2xl md:text-3xl font-heading font-bold mb-1">
+        เลือกธีมกรอบ 🎨
       </h1>
-      <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <p className="text-sm text-muted-foreground mb-6">{meta?.title}</p>
+
+      <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 flex-1">
+        {frames.length === 0 && (
+          <button
+            onClick={() => setSelected("__placeholder__")}
+            className={`group relative rounded-3xl border-2 overflow-hidden bg-card transition-all ${
+              selected === "__placeholder__" ? "border-primary scale-[1.02]" : "border-border"
+            }`}
+          >
+            <div className="aspect-[2/3] bg-muted/40 flex items-center justify-center text-6xl">
+              🎨
+            </div>
+            <div className="p-3 text-center">
+              <p className="font-semibold">ธีมมาตรฐาน</p>
+              <p className="text-xs text-muted-foreground mt-1">เร็วๆ นี้ จะมีให้เลือกเพิ่ม</p>
+            </div>
+          </button>
+        )}
         {frames.map((f) => (
           <button
             key={f.id}
-            onClick={() => onPick(f)}
-            className="group relative rounded-3xl border-2 border-border hover:border-primary overflow-hidden bg-card transition-all hover:scale-[1.02]"
+            onClick={() => setSelected(f.id)}
+            className={`group relative rounded-3xl border-2 overflow-hidden bg-card transition-all ${
+              selected === f.id ? "border-primary scale-[1.02]" : "border-border hover:border-primary/60"
+            }`}
           >
             <div className="aspect-[2/3] bg-muted/40 flex items-center justify-center">
               <img src={f.url} alt={f.filename} className="w-full h-full object-contain" />
@@ -45,6 +69,15 @@ export function ThemePicker({ format, onBack, onPick }: Props) {
             </div>
           </button>
         ))}
+      </div>
+
+      <div className="mt-6">
+        <button
+          onClick={confirm}
+          className="w-full h-14 rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:scale-[1.01] transition"
+        >
+          เลือกธีมนี้เลย →
+        </button>
       </div>
     </main>
   );

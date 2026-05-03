@@ -1,15 +1,15 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Loader2, Printer, Sparkles, Star, Check } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Sparkles, Check } from "lucide-react";
 import { CaptureFlow } from "@/components/CaptureFlow";
 import { LAYOUTS, renderLayout, renderLayoutD, type LayoutId } from "@/lib/composer";
 import { loadConfig } from "@/lib/admin-config";
 import { paymentSuccess } from "@/lib/audio";
 import { FormatCard, FORMAT_META } from "@/components/FormatCard";
 import { ThemePicker } from "@/components/ThemePicker";
-import { framesForFormat } from "@/lib/frames";
+// frame catalog accessed inside ThemePicker
 import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining, consumePromo } from "@/lib/promo";
 import QRCode from "qrcode";
 
@@ -31,7 +31,7 @@ const FILTER_ORDER: FilterId[] = ["none", "film", "soft", "bw", "vintage"];
 
 function SessionPage() {
   const { id } = Route.useParams();
-  const navigate = useNavigate();
+  // navigation handled via Link
   const [step, setStep] = useState<Step>("format");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [layout, setLayout] = useState<LayoutId>("B");
@@ -44,8 +44,15 @@ function SessionPage() {
   const [gifQr, setGifQr] = useState<string>("");
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrintedOnce, setHasPrintedOnce] = useState(false);
+  const [printStatus, setPrintStatus] = useState<string>("");
   const upsellIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const upsellOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reviewer promo
+  const [reviewStory, setReviewStory] = useState(false);
+  const [reviewClip, setReviewClip] = useState(false);
+  const [reviewHandle, setReviewHandle] = useState("");
+  const [reviewerActive, setReviewerActive] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -58,9 +65,24 @@ function SessionPage() {
   const _cfgPrice = cfg?.price ?? 69;
   const [copies, setCopies] = useState<1 | 2>(1);
   const promoLeft = typeof window !== "undefined" ? promoRemaining() : 0;
-  const isPromo = promoLeft > 0;
+  const isPromo = promoLeft > 0 || reviewerActive;
   const basePrice = isPromo ? PROMO_PRICE : NORMAL_PRICE;
   const price = copies === 2 ? basePrice + REPRINT_PRICE : basePrice;
+
+  function activateReviewerPromo() {
+    if (!reviewStory && !reviewClip) {
+      toast.error("เลือกอย่างน้อย 1 ข้อนะ");
+      return;
+    }
+    setReviewerActive(true);
+    const reviewType = reviewStory && reviewClip ? "both" : reviewStory ? "story_tag" : "clip";
+    supabase
+      .from("sessions")
+      .update({ review_type: reviewType, review_handle: reviewHandle || null })
+      .eq("id", id)
+      .then(() => {});
+    toast.success("ขอบคุณล่วงหน้าเลยนะ! ราคาพิเศษ 49.- 🎉");
+  }
 
   async function handleCaptured(blobs: Blob[]) {
     setStep("uploading");
@@ -89,9 +111,7 @@ function SessionPage() {
   async function chooseLayout(l: LayoutId) {
     setLayout(l);
     await supabase.from("sessions").update({ layout: l }).eq("id", id);
-    const isFmt = l === "A" || l === "B";
-    const frames = isFmt ? framesForFormat(l as "A" | "B") : [];
-    setStep(isFmt && frames.length > 1 ? "theme" : "capture");
+    setStep(l === "A" || l === "B" ? "theme" : "capture");
   }
 
   function backFromCapture() {
@@ -170,25 +190,15 @@ function SessionPage() {
       setStep("delivery");
 
       // Auto-print based on copies chosen
-      if (copies >= 1) {
-        try {
-          const canvas = await urlToCanvas(photoUrl);
-          setIsPrinting(true);
-          setHasPrintedOnce(true);
-          const win = printCanvas(canvas);
-          if (win) { try { win.addEventListener("afterprint", markPrintFinished); } catch {} }
-          setTimeout(markPrintFinished, 12000);
-          if (copies === 2) {
-            setTimeout(async () => {
-              try {
-                const win2 = printCanvas(canvas);
-                if (win2) { try { win2.addEventListener("afterprint", markPrintFinished); } catch {} }
-              } catch (e) { console.error(e); }
-            }, 3000);
-          }
-        } catch (e) {
-          console.error(e);
-        }
+      try {
+        const canvas = await urlToCanvas(photoUrl);
+        setIsPrinting(true);
+        setHasPrintedOnce(true);
+        await batchPrint(canvas, copies);
+        setIsPrinting(false);
+      } catch (e) {
+        console.error(e);
+        setIsPrinting(false);
       }
     }, 10000);
   }
@@ -268,6 +278,15 @@ function SessionPage() {
     setIsPrinting(false);
   }
 
+  async function batchPrint(canvas: HTMLCanvasElement, copies: number) {
+    for (let i = 0; i < copies; i++) {
+      if (i > 0) await new Promise((r) => setTimeout(r, 4000));
+      setPrintStatus(copies > 1 ? `🖨️ กำลังพิมพ์แผ่นที่ ${i + 1}...` : "🖨️ กำลังพิมพ์...");
+      printCanvas(canvas);
+    }
+    setPrintStatus(copies > 1 ? `✅ พิมพ์ครบ ${copies} แผ่นแล้ว!` : "✅ สั่งพิมพ์แล้ว!");
+  }
+
   async function doPrintOnce() {
     try {
       const canvas = await urlToCanvas(photoOutputUrl);
@@ -298,13 +317,16 @@ function SessionPage() {
 
   return (
     <main className="min-h-screen px-4 py-6 max-w-5xl mx-auto">
-      <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
-        <ArrowLeft className="h-4 w-4" /> หน้าแรก
-      </Link>
+      {step !== "delivery" && (
+        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
+          <ArrowLeft className="h-4 w-4" /> หน้าแรก
+        </Link>
+      )}
 
       {step === "capture" && (
         <CaptureFlow
           totalShots={LAYOUTS.find((l) => l.id === layout)?.needsCount ?? 4}
+          aspectRatio={layout === "A" ? 9 / 16 : 3 / 4}
           onComplete={handleCaptured}
           onBack={backFromCapture}
         />
@@ -386,19 +408,22 @@ function SessionPage() {
       )}
 
       {step === "format" && (
-        <section className="animate-fade-in">
-          <h2 className="text-3xl md:text-4xl font-heading font-bold mb-2">อยากได้แบบไหน?</h2>
-          <p className="text-muted-foreground mb-2">เลือกฟอร์แมตสำหรับปริ้นท์</p>
-          <p className="text-sm text-muted-foreground mb-8">✨ ทุกแบบจะได้ GIF เคลื่อนไหวแถมไปด้วยฟรี!</p>
+        <section className="animate-fade-in flex flex-col" style={{ minHeight: "calc(100vh - 96px)" }}>
+          <h2 className="text-2xl md:text-3xl font-heading font-bold mb-1">อยากได้แบบไหน?</h2>
+          <p className="text-sm text-muted-foreground mb-1">เลือกฟอร์แมตสำหรับปริ้นท์</p>
+          <p className="text-xs text-muted-foreground mb-4">✨ ทุกแบบจะได้ GIF เคลื่อนไหวแถมไปด้วยฟรี!</p>
 
-          <div className="grid sm:grid-cols-2 gap-4 mb-8">
+          <div className="grid sm:grid-cols-2 gap-3 flex-1 items-stretch">
             {FORMAT_META.map((m) => (
-              <FormatCard
-                key={m.id}
-                meta={m}
-                selected={layout === m.id}
-                onSelect={(id) => chooseLayout(id)}
-              />
+              <div key={m.id} style={{ maxHeight: "42vh" }} className="flex">
+                <div className="w-full">
+                  <FormatCard
+                    meta={m}
+                    selected={layout === m.id}
+                    onSelect={(id) => chooseLayout(id)}
+                  />
+                </div>
+              </div>
             ))}
           </div>
         </section>
@@ -421,6 +446,44 @@ function SessionPage() {
           <div className="mb-4 px-4">
             <FormatPreview id={layout} photos={photoUrls} />
           </div>
+
+          {/* Reviewer promo */}
+          {!reviewerActive && promoLeft <= 0 && (
+            <div className="mb-5 px-4 text-left">
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <p className="font-heading font-bold mb-3 text-center">รีวิวให้เราแลกส่วนลดได้เลย! 📱</p>
+                <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                  <input type="checkbox" checked={reviewStory} onChange={(e) => setReviewStory(e.target.checked)} />
+                  <span className="text-sm">แท็กร้านใน Story/Post</span>
+                </label>
+                <label className="flex items-center gap-2 mb-3 cursor-pointer">
+                  <input type="checkbox" checked={reviewClip} onChange={(e) => setReviewClip(e.target.checked)} />
+                  <span className="text-sm">ทำคลิปเกี่ยวกับ Photobooth นี้</span>
+                </label>
+                <input
+                  type="text"
+                  value={reviewHandle}
+                  onChange={(e) => setReviewHandle(e.target.value)}
+                  placeholder="@your_handle"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm mb-3"
+                />
+                <p className="text-[11px] text-muted-foreground mb-2 text-center">IG / TikTok ของคุณ</p>
+                <button
+                  onClick={activateReviewerPromo}
+                  className="w-full h-11 rounded-full bg-primary text-primary-foreground font-semibold text-sm"
+                >
+                  รับส่วนลดเลย! →
+                </button>
+              </div>
+            </div>
+          )}
+          {reviewerActive && (
+            <div className="mb-5 px-4">
+              <div className="rounded-2xl bg-green-500/10 border border-green-500/30 p-3 text-sm text-green-500 font-semibold">
+                ✅ ขอบคุณล่วงหน้าเลยนะ! ราคาพิเศษ {PROMO_PRICE}.- 🎉
+              </div>
+            </div>
+          )}
 
           {/* Copies toggle */}
           <div className="grid grid-cols-2 gap-3 mb-5 px-4">
@@ -458,11 +521,11 @@ function SessionPage() {
           <p className="text-sm text-muted-foreground mb-2">รับเงินได้จากทุกธนาคาร</p>
           <p className="text-3xl font-heading font-bold text-primary mb-8">{price} ฿</p>
 
-          <div className="px-4">
+          <div>
             {!confirming ? (
               <button
                 onClick={confirmPayment}
-                style={{ width: "calc(100% - 0px)" }}
+                style={{ width: "calc(100% - 32px)", marginLeft: 16, marginRight: 16 }}
                 className="h-14 rounded-full bg-green-600 text-white font-semibold text-lg hover:bg-green-700 transition"
               >
                 ✓ โอนแล้ว ยืนยันเลย
@@ -491,75 +554,42 @@ function SessionPage() {
       )}
 
       {step === "delivery" && (
-        <section className="animate-fade-in">
-          <h2 className="text-3xl font-heading font-bold mb-6 text-center">เสร็จแล้ว! ขอบคุณนะ 🎉</h2>
-
-          {/* Output preview */}
-          <div className="flex justify-center mb-8">
-            <div className="bg-card p-3 rounded-2xl shadow-2xl max-w-md">
-              <img src={photoOutputUrl} alt="output" className="w-full rounded-xl" />
-            </div>
+        <section className="animate-fade-in max-w-2xl mx-auto text-center">
+          <div className="flex justify-center mb-4">
+            <CheckCircle2 className="h-24 w-24 text-green-500 animate-pop" />
           </div>
+          <h2 className="text-3xl font-heading font-bold mb-8">สั่งพิมพ์เรียบร้อยแล้ว 🎉</h2>
 
-          {/* Print section (top) */}
-          <div className="max-w-md mx-auto mb-8 p-6 rounded-3xl border border-border bg-card text-center">
-            <p className="text-2xl mb-2">🖨️</p>
-            <h3 className="font-heading font-bold text-lg mb-3">ปริ้นท์รับเลย</h3>
-            <button
-              onClick={handlePrintClick}
-              className="w-full h-12 rounded-full bg-primary text-primary-foreground font-semibold hover:scale-[1.02] transition inline-flex items-center justify-center gap-2"
-            >
-              <Printer className="h-4 w-4" /> ปริ้นท์รับเลย 🖨️
-            </button>
-            {isPrinting && (
-              <p className="mt-4 text-sm font-semibold text-primary animate-pulse">
-                🖨️ กำลังพิมพ์อยู่นะ รอแปปนึง...
-              </p>
-            )}
-            {!isPrinting && hasPrintedOnce && (
-              <p className="mt-4 text-sm font-semibold text-primary">
-                ✅ สั่งพิมพ์แล้ว!
-              </p>
-            )}
-          </div>
-
-          {/* Scan to save section (bottom) */}
-          <div className="max-w-2xl mx-auto">
-            <h3 className="text-center font-heading font-bold text-xl mb-5">📲 สแกนเซฟลงมือถือ</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-3xl border border-border bg-card text-center">
-                <p className="font-heading font-bold mb-3">📸 เซฟรูปนิ่ง</p>
-                {photoQr && (
-                  <div className="bg-white p-2 rounded-xl inline-block">
-                    <img src={photoQr} alt="QR เซฟรูป" className="w-[200px] h-[200px] block" />
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground mt-3">สแกนรับรูป JPEG</p>
-              </div>
-              <div className="p-4 rounded-3xl border border-border bg-card text-center">
-                <p className="font-heading font-bold mb-3">✨ เซฟ GIF</p>
-                {gifQr && (
-                  <div className="bg-white p-2 rounded-xl inline-block">
-                    <img src={gifQr} alt="QR เซฟ GIF" className="w-[200px] h-[200px] block" />
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground mt-3">สแกนรับ GIF เคลื่อนไหว</p>
-              </div>
-            </div>
-            <p className="text-center text-muted-foreground mt-4" style={{ fontSize: 12 }}>
-              ลิงก์นี้ใช้ได้ 24 ชั่วโมง
+          {(isPrinting || printStatus) && (
+            <p className={`mb-6 text-base font-semibold text-primary ${isPrinting ? "animate-pulse" : ""}`}>
+              {printStatus || "🖨️ กำลังพิมพ์..."}
             </p>
+          )}
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="p-4 rounded-3xl border border-border bg-card text-center">
+              <p className="font-heading font-bold mb-3">📸 เซฟรูปนิ่ง</p>
+              {photoQr && (
+                <div className="bg-white p-2 rounded-xl inline-block">
+                  <img src={photoQr} alt="QR เซฟรูป" className="w-[200px] h-[200px] block" />
+                </div>
+              )}
+            </div>
+            <div className="p-4 rounded-3xl border border-border bg-card text-center">
+              <p className="font-heading font-bold mb-3">✨ เซฟ GIF</p>
+              {gifQr && (
+                <div className="bg-white p-2 rounded-xl inline-block">
+                  <img src={gifQr} alt="QR เซฟ GIF" className="w-[200px] h-[200px] block" />
+                </div>
+              )}
+            </div>
           </div>
 
-          <button
-            onClick={() => navigate({ to: "/" })}
-            className="block mx-auto mt-10 text-sm text-muted-foreground hover:text-foreground"
-          >
-            จบ session
-          </button>
+          <p className="text-center text-muted-foreground" style={{ fontSize: 12 }}>
+            ⏰ ลิงก์ใช้ได้ 24 ชั่วโมง
+          </p>
 
           {gifOutputUrl && <link rel="prefetch" href={gifOutputUrl} />}
-
         </section>
       )}
     </main>

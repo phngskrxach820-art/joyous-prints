@@ -1,0 +1,1 @@
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS review_type text, ADD COLUMN IF NOT EXISTS review_handle text;
