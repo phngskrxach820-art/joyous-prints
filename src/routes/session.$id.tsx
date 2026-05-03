@@ -31,7 +31,7 @@ const FILTER_ORDER: FilterId[] = ["none", "film", "soft", "bw", "vintage"];
 
 function SessionPage() {
   const { id } = Route.useParams();
-  const navigate = useNavigate();
+  // navigation handled via Link
   const [step, setStep] = useState<Step>("format");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [layout, setLayout] = useState<LayoutId>("B");
