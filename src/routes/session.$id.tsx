@@ -7,13 +7,16 @@ import { CaptureFlow } from "@/components/CaptureFlow";
 import { LAYOUTS, renderLayout, renderLayoutD, type LayoutId } from "@/lib/composer";
 import { loadConfig } from "@/lib/admin-config";
 import { paymentSuccess } from "@/lib/audio";
+import { FormatCard, FORMAT_META } from "@/components/FormatCard";
+import { ThemePicker } from "@/components/ThemePicker";
+import { framesForFormat } from "@/lib/frames";
 import QRCode from "qrcode";
 
 export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
 });
 
-type Step = "format" | "capture" | "uploading" | "filter" | "payment" | "rendering" | "delivery";
+type Step = "format" | "theme" | "capture" | "uploading" | "filter" | "payment" | "rendering" | "delivery";
 
 type FilterId = "none" | "film" | "soft" | "bw" | "vintage";
 const FILTERS: Record<FilterId, { label: string; css: string }> = {
@@ -83,7 +86,8 @@ function SessionPage() {
   async function chooseLayout(l: LayoutId) {
     setLayout(l);
     await supabase.from("sessions").update({ layout: l }).eq("id", id);
-    setStep("capture");
+    const frames = framesForFormat(l);
+    setStep(frames.length > 1 ? "theme" : "capture");
   }
 
   function backFromCapture() {
@@ -401,38 +405,24 @@ function SessionPage() {
           <p className="text-sm text-muted-foreground mb-8">✨ ทุกแบบจะได้ GIF เคลื่อนไหวแถมไปด้วยฟรี!</p>
 
           <div className="grid sm:grid-cols-2 gap-4 mb-8">
-            {LAYOUTS.map((l) => (
-              <button
-                key={l.id}
-                onClick={() => setLayout(l.id)}
-                className={`relative p-6 rounded-3xl border-2 text-left transition-all ${
-                  layout === l.id
-                    ? "border-primary bg-primary/10 scale-[1.02]"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                {"recommended" in l && l.recommended && (
-                  <div className="absolute -top-3 right-4 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1">
-                    <Star className="h-3 w-3" /> แนะนำ
-                  </div>
-                )}
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-3xl">{l.emoji}</span>
-                  <h3 className="font-heading font-bold text-xl">{l.label}</h3>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">{l.desc}</p>
-                <FormatPreview id={l.id} photos={photoUrls} />
-              </button>
+            {FORMAT_META.map((m) => (
+              <FormatCard
+                key={m.id}
+                meta={m}
+                selected={layout === m.id}
+                onSelect={(id) => chooseLayout(id)}
+              />
             ))}
           </div>
-
-          <button
-            onClick={() => chooseLayout(layout)}
-            className="w-full h-14 rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:scale-[1.01] transition"
-          >
-            ไปต่อเลย →
-          </button>
         </section>
+      )}
+
+      {step === "theme" && (
+        <ThemePicker
+          format={layout}
+          onBack={() => setStep("format")}
+          onPick={() => setStep("capture")}
+        />
       )}
 
       {step === "payment" && (
