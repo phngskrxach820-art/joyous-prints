@@ -10,6 +10,7 @@ import { paymentSuccess } from "@/lib/audio";
 import { FormatCard, FORMAT_META } from "@/components/FormatCard";
 import { ThemePicker } from "@/components/ThemePicker";
 import { framesForFormat } from "@/lib/frames";
+import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining, consumePromo } from "@/lib/promo";
 import QRCode from "qrcode";
 
 export const Route = createFileRoute("/session/$id")({
