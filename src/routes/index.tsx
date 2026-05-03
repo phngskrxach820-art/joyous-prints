@@ -77,11 +77,6 @@ function Home() {
             Heng Photobooth
           </span>
         </div>
-        <h1 className="text-4xl md:text-6xl font-heading font-bold tracking-tight leading-tight">
-          พร้อมถ่ายรูป
-          <br />
-          แล้วหรือยัง? 📷
-        </h1>
       </div>
 
       {/* Promo banner slider */}
