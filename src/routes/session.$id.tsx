@@ -458,7 +458,40 @@ function SessionPage() {
       {step === "payment" && (
         <section className="animate-fade-in max-w-md mx-auto text-center">
           <h2 className="text-3xl font-heading font-bold mb-2">สแกน QR จ่ายได้เลย</h2>
-          <p className="text-muted-foreground mb-6">PromptPay รับทุกธนาคาร</p>
+          <p className="text-muted-foreground mb-4">PromptPay รับทุกธนาคาร</p>
+
+          {/* Layout preview */}
+          <div className="mb-4 px-4">
+            <FormatPreview id={layout} photos={photoUrls} />
+          </div>
+
+          {/* Copies toggle */}
+          <div className="grid grid-cols-2 gap-3 mb-5 px-4">
+            <button
+              onClick={() => !confirming && setCopies(1)}
+              disabled={confirming}
+              className={`rounded-full py-3 px-3 font-semibold text-sm transition ${
+                copies === 1
+                  ? "bg-primary text-primary-foreground shadow-lg"
+                  : "border border-border text-muted-foreground hover:border-primary/60"
+              }`}
+            >
+              <div>1 แผ่น</div>
+              <div className="text-xs opacity-80">{basePrice}.-</div>
+            </button>
+            <button
+              onClick={() => !confirming && setCopies(2)}
+              disabled={confirming}
+              className={`rounded-full py-3 px-3 font-semibold text-sm transition ${
+                copies === 2
+                  ? "bg-primary text-primary-foreground shadow-lg"
+                  : "border border-border text-muted-foreground hover:border-primary/60"
+              }`}
+            >
+              <div>2 แผ่น 🔥 ประหยัดกว่า!</div>
+              <div className="text-xs opacity-80">{basePrice + REPRINT_PRICE}.- (รวมพิมพ์ซ้ำ)</div>
+            </button>
+          </div>
 
           <div className="bg-white p-4 rounded-3xl inline-block shadow-2xl mb-6">
             <img src="/qr-payment.png" alt="PromptPay QR" className="w-[280px] max-w-full" />
@@ -468,25 +501,28 @@ function SessionPage() {
           <p className="text-sm text-muted-foreground mb-2">รับเงินได้จากทุกธนาคาร</p>
           <p className="text-3xl font-heading font-bold text-primary mb-8">{price} ฿</p>
 
-          {!confirming ? (
-            <button
-              onClick={confirmPayment}
-              className="w-full h-14 rounded-full bg-green-600 text-white font-semibold text-lg hover:bg-green-700 transition"
-            >
-              ✓ โอนแล้ว ยืนยันเลย
-            </button>
-          ) : !paid ? (
-            <div className="py-8">
-              <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
-              <p className="font-semibold">กำลังเช็คให้นะ รอแปปนึง...</p>
-              <p className="text-sm text-muted-foreground mt-1">รอสักครู่นะ ใช้เวลาประมาณ 10 วินาที</p>
-            </div>
-          ) : (
-            <div className="py-8">
-              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-3 animate-pop" />
-              <p className="text-xl font-semibold">เรียบร้อย! รับรูปได้เลย 🎉</p>
-            </div>
-          )}
+          <div className="px-4">
+            {!confirming ? (
+              <button
+                onClick={confirmPayment}
+                style={{ width: "calc(100% - 0px)" }}
+                className="h-14 rounded-full bg-green-600 text-white font-semibold text-lg hover:bg-green-700 transition"
+              >
+                ✓ โอนแล้ว ยืนยันเลย
+              </button>
+            ) : !paid ? (
+              <div className="py-8">
+                <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+                <p className="font-semibold">กำลังเช็คให้นะ รอแปปนึง...</p>
+                <p className="text-sm text-muted-foreground mt-1">รอสักครู่นะ ใช้เวลาประมาณ 10 วินาที</p>
+              </div>
+            ) : (
+              <div className="py-8">
+                <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-3 animate-pop" />
+                <p className="text-xl font-semibold">เรียบร้อย! รับรูปได้เลย 🎉</p>
+              </div>
+            )}
+          </div>
         </section>
       )}
 
