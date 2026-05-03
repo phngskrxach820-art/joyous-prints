@@ -135,7 +135,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
           setTimeout(() => onComplete(newBlobs), 2000);
         } else {
           setShotIndex((i) => i + 1);
-          setPhase("preview");
+          setPhase("ready");
         }
       }, 1500);
     }, 180);
@@ -159,7 +159,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
   return (
     <div className="relative min-h-[80vh] flex flex-col items-center">
       {/* Back button */}
-      {onBack && phase === "preview" && (
+      {onBack && phase === "ready" && (
         <button
           onClick={onBack}
           className="absolute top-4 left-4 z-20 inline-flex items-center gap-1 px-3 py-2 rounded-full bg-card/80 backdrop-blur border border-border text-xs font-semibold hover:bg-card"
@@ -174,7 +174,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
       </div>
 
       {/* Camera selector */}
-      {devices.length > 1 && phase === "preview" && (
+      {devices.length > 1 && phase === "ready" && (
         <div className="absolute top-4 right-4 z-20">
           <select
             value={selectedDeviceId}
