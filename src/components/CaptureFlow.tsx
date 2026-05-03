@@ -248,6 +248,17 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
         )}
       </div>
 
+      {/* Manual trigger */}
+      {phase === "ready" && (
+        <button
+          onClick={beginCountdown}
+          className="mt-6 inline-flex items-center justify-center px-10 rounded-full bg-primary text-primary-foreground font-bold text-lg shadow-xl hover:scale-[1.03] transition-transform"
+          style={{ minHeight: 64 }}
+        >
+          📸 เริ่มถ่ายเลย!
+        </button>
+      )}
+
       {/* Thumbnail strip below */}
       <div className="mt-6 flex gap-3">
         {Array.from({ length: totalShots }, (_, i) => i).map((i) => (
