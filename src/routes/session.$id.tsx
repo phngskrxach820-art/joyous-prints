@@ -445,6 +445,44 @@ function SessionPage() {
             <FormatPreview id={layout} photos={photoUrls} />
           </div>
 
+          {/* Reviewer promo */}
+          {!reviewerActive && promoLeft <= 0 && (
+            <div className="mb-5 px-4 text-left">
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <p className="font-heading font-bold mb-3 text-center">รีวิวให้เราแลกส่วนลดได้เลย! 📱</p>
+                <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                  <input type="checkbox" checked={reviewStory} onChange={(e) => setReviewStory(e.target.checked)} />
+                  <span className="text-sm">แท็กร้านใน Story/Post</span>
+                </label>
+                <label className="flex items-center gap-2 mb-3 cursor-pointer">
+                  <input type="checkbox" checked={reviewClip} onChange={(e) => setReviewClip(e.target.checked)} />
+                  <span className="text-sm">ทำคลิปเกี่ยวกับ Photobooth นี้</span>
+                </label>
+                <input
+                  type="text"
+                  value={reviewHandle}
+                  onChange={(e) => setReviewHandle(e.target.value)}
+                  placeholder="@your_handle"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm mb-3"
+                />
+                <p className="text-[11px] text-muted-foreground mb-2 text-center">IG / TikTok ของคุณ</p>
+                <button
+                  onClick={activateReviewerPromo}
+                  className="w-full h-11 rounded-full bg-primary text-primary-foreground font-semibold text-sm"
+                >
+                  รับส่วนลดเลย! →
+                </button>
+              </div>
+            </div>
+          )}
+          {reviewerActive && (
+            <div className="mb-5 px-4">
+              <div className="rounded-2xl bg-green-500/10 border border-green-500/30 p-3 text-sm text-green-500 font-semibold">
+                ✅ ขอบคุณล่วงหน้าเลยนะ! ราคาพิเศษ {PROMO_PRICE}.- 🎉
+              </div>
+            </div>
+          )}
+
           {/* Copies toggle */}
           <div className="grid grid-cols-2 gap-3 mb-5 px-4">
             <button
