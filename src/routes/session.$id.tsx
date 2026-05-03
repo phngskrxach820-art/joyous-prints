@@ -9,7 +9,7 @@ import { loadConfig } from "@/lib/admin-config";
 import { paymentSuccess } from "@/lib/audio";
 import { FormatCard, FORMAT_META } from "@/components/FormatCard";
 import { ThemePicker } from "@/components/ThemePicker";
-import { framesForFormat } from "@/lib/frames";
+// frame catalog accessed inside ThemePicker
 import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining, consumePromo } from "@/lib/promo";
 import QRCode from "qrcode";
 
