@@ -568,47 +568,6 @@ function SessionPage() {
 
           {gifOutputUrl && <link rel="prefetch" href={gifOutputUrl} />}
 
-          {/* Upsell modal */}
-          {upsellOpen && (
-            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur flex items-center justify-center p-4 animate-fade-in">
-              <div className="bg-card max-w-md w-full rounded-3xl p-6 shadow-2xl border-2 border-primary">
-                <div className="inline-block px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-bold mb-3">
-                  🔥 ข้อเสนอพิเศษ
-                </div>
-                <h3 className="font-heading font-bold text-2xl mb-3">พิมพ์แผ่นที่ 2 เพิ่มไหม?</h3>
-                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-4">
-                  <div
-                    className="h-full bg-primary transition-[width] duration-100 ease-linear"
-                    style={{ width: `${(upsellRemainingMs / 30000) * 100}%` }}
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground mb-1">
-                  <span className="line-through">ปกติ 69.-</span>
-                </p>
-                <p className="text-xl font-heading font-bold mb-5">เพียง 30.- เท่านั้น! 🎉</p>
-                {secondPrintMessage ? (
-                  <p className="text-center font-semibold text-primary animate-pulse py-3">
-                    {secondPrintMessage}
-                  </p>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    <button
-                      onClick={acceptSecondPrint}
-                      className="w-full h-12 rounded-full bg-primary text-primary-foreground font-semibold hover:scale-[1.02] transition"
-                    >
-                      รับเลย! +30.- 🙌
-                    </button>
-                    <button
-                      onClick={closeUpsell}
-                      className="w-full h-12 rounded-full border border-border font-semibold"
-                    >
-                      ไม่ขอบคุณ
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </section>
       )}
     </main>
