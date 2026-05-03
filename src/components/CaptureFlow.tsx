@@ -11,7 +11,7 @@ type Props = {
 export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [phase, setPhase] = useState<"init" | "preview" | "countdown" | "flash" | "review" | "done" | "error">("init");
+  const [phase, setPhase] = useState<"init" | "ready" | "preview" | "countdown" | "flash" | "review" | "done" | "error">("init");
   const [shotIndex, setShotIndex] = useState(0); // 0..3
   const [count, setCount] = useState(3);
   const [thumbs, setThumbs] = useState<string[]>([]);
@@ -41,7 +41,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
         setDevices(cams);
         const used = initial.getVideoTracks()[0]?.getSettings().deviceId ?? cams[0]?.deviceId ?? "";
         setSelectedDeviceId(used);
-        setPhase("preview");
+        setPhase("ready");
       } catch (e) {
         const msg = e instanceof Error ? e.message : "ไม่สามารถเข้าถึงกล้อง";
         setErrMsg(msg);
@@ -71,13 +71,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
     }
   }
 
-  // Auto-start countdown when in preview
-  useEffect(() => {
-    if (phase !== "preview") return;
-    const timer = setTimeout(() => beginCountdown(), 800);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, shotIndex]);
+  // No auto countdown — user taps the button.
 
   function beginCountdown() {
     setPhase("countdown");
@@ -141,7 +135,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
           setTimeout(() => onComplete(newBlobs), 2000);
         } else {
           setShotIndex((i) => i + 1);
-          setPhase("preview");
+          setPhase("ready");
         }
       }, 1500);
     }, 180);
@@ -165,7 +159,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
   return (
     <div className="relative min-h-[80vh] flex flex-col items-center">
       {/* Back button */}
-      {onBack && phase === "preview" && (
+      {onBack && phase === "ready" && (
         <button
           onClick={onBack}
           className="absolute top-4 left-4 z-20 inline-flex items-center gap-1 px-3 py-2 rounded-full bg-card/80 backdrop-blur border border-border text-xs font-semibold hover:bg-card"
@@ -180,7 +174,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
       </div>
 
       {/* Camera selector */}
-      {devices.length > 1 && phase === "preview" && (
+      {devices.length > 1 && phase === "ready" && (
         <div className="absolute top-4 right-4 z-20">
           <select
             value={selectedDeviceId}
@@ -253,6 +247,17 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
           </div>
         )}
       </div>
+
+      {/* Manual trigger */}
+      {phase === "ready" && (
+        <button
+          onClick={beginCountdown}
+          className="mt-6 inline-flex items-center justify-center px-10 rounded-full bg-primary text-primary-foreground font-bold text-lg shadow-xl hover:scale-[1.03] transition-transform"
+          style={{ minHeight: 64 }}
+        >
+          📸 เริ่มถ่ายเลย!
+        </button>
+      )}
 
       {/* Thumbnail strip below */}
       <div className="mt-6 flex gap-3">

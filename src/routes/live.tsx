@@ -57,7 +57,7 @@ function LiveView() {
       <div className="relative z-10 animate-fade-in">
         <Camera className="h-20 w-20 mx-auto mb-8 text-white animate-pulse-soft" strokeWidth={1.5} />
         <h1 className="font-heading font-bold leading-tight mb-3" style={{ fontSize: "clamp(2.5rem, 6vw, 4rem)" }}>
-          พร้อมถ่ายรูปแล้วหรือยัง? 📷
+          Heng Photobooth 📷
         </h1>
         <p className="text-xl opacity-70 mb-8">มาถ่ายรูปด้วยกันเลย</p>
         <div className="flex justify-center gap-2">

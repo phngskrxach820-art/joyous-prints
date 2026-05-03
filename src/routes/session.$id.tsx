@@ -10,6 +10,7 @@ import { paymentSuccess } from "@/lib/audio";
 import { FormatCard, FORMAT_META } from "@/components/FormatCard";
 import { ThemePicker } from "@/components/ThemePicker";
 import { framesForFormat } from "@/lib/frames";
+import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining, consumePromo } from "@/lib/promo";
 import QRCode from "qrcode";
 
 export const Route = createFileRoute("/session/$id")({
@@ -43,9 +44,6 @@ function SessionPage() {
   const [gifQr, setGifQr] = useState<string>("");
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrintedOnce, setHasPrintedOnce] = useState(false);
-  const [upsellOpen, setUpsellOpen] = useState(false);
-  const [upsellRemainingMs, setUpsellRemainingMs] = useState(30000);
-  const [secondPrintMessage, setSecondPrintMessage] = useState<string | null>(null);
   const upsellIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const upsellOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -57,7 +55,12 @@ function SessionPage() {
   }, []);
 
   const cfg = typeof window !== "undefined" ? loadConfig() : null;
-  const price = cfg?.price ?? 69;
+  const _cfgPrice = cfg?.price ?? 69;
+  const [copies, setCopies] = useState<1 | 2>(1);
+  const promoLeft = typeof window !== "undefined" ? promoRemaining() : 0;
+  const isPromo = promoLeft > 0;
+  const basePrice = isPromo ? PROMO_PRICE : NORMAL_PRICE;
+  const price = copies === 2 ? basePrice + REPRINT_PRICE : basePrice;
 
   async function handleCaptured(blobs: Blob[]) {
     setStep("uploading");
@@ -143,6 +146,7 @@ function SessionPage() {
 
     setTimeout(async () => {
       await supabase.from("sessions").update({ payment_status: "paid" }).eq("id", id);
+      if (isPromo) consumePromo();
       setPaid(true);
       paymentSuccess();
       setStep("rendering");
@@ -164,6 +168,28 @@ function SessionPage() {
       setPhotoQr(pq);
       setGifQr(gq);
       setStep("delivery");
+
+      // Auto-print based on copies chosen
+      if (copies >= 1) {
+        try {
+          const canvas = await urlToCanvas(photoUrl);
+          setIsPrinting(true);
+          setHasPrintedOnce(true);
+          const win = printCanvas(canvas);
+          if (win) { try { win.addEventListener("afterprint", markPrintFinished); } catch {} }
+          setTimeout(markPrintFinished, 12000);
+          if (copies === 2) {
+            setTimeout(async () => {
+              try {
+                const win2 = printCanvas(canvas);
+                if (win2) { try { win2.addEventListener("afterprint", markPrintFinished); } catch {} }
+              } catch (e) { console.error(e); }
+            }, 3000);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
     }, 10000);
   }
 
@@ -266,49 +292,9 @@ function SessionPage() {
     setIsPrinting(true);
     setHasPrintedOnce(true);
     await doPrintOnce();
-    if (upsellOpenTimerRef.current) clearTimeout(upsellOpenTimerRef.current);
-    upsellOpenTimerRef.current = setTimeout(() => {
-      setUpsellRemainingMs(30000);
-      setUpsellOpen(true);
-      if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
-      upsellIntervalRef.current = setInterval(() => {
-        setUpsellRemainingMs((prev) => {
-          const next = prev - 100;
-          if (next <= 0) {
-            if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
-            setUpsellOpen(false);
-            return 0;
-          }
-          return next;
-        });
-      }, 100);
-    }, 1000);
   }
 
-  function closeUpsell() {
-    if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
-    setUpsellOpen(false);
-  }
-
-  async function acceptSecondPrint() {
-    if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
-    setSecondPrintMessage("กำลังพิมพ์แผ่นที่ 2... 🖨️");
-    setIsPrinting(true);
-    try {
-      const canvas = await urlToCanvas(photoOutputUrl);
-      const win = printCanvas(canvas);
-      if (win) {
-        try { win.addEventListener("afterprint", markPrintFinished); } catch {}
-      }
-      setTimeout(markPrintFinished, 12000);
-    } catch (e) {
-      console.error(e);
-    }
-    setTimeout(() => {
-      setUpsellOpen(false);
-      setSecondPrintMessage(null);
-    }, 2000);
-  }
+  // (legacy upsell removed — copies chosen at payment now)
 
   return (
     <main className="min-h-screen px-4 py-6 max-w-5xl mx-auto">
@@ -429,7 +415,40 @@ function SessionPage() {
       {step === "payment" && (
         <section className="animate-fade-in max-w-md mx-auto text-center">
           <h2 className="text-3xl font-heading font-bold mb-2">สแกน QR จ่ายได้เลย</h2>
-          <p className="text-muted-foreground mb-6">PromptPay รับทุกธนาคาร</p>
+          <p className="text-muted-foreground mb-4">PromptPay รับทุกธนาคาร</p>
+
+          {/* Layout preview */}
+          <div className="mb-4 px-4">
+            <FormatPreview id={layout} photos={photoUrls} />
+          </div>
+
+          {/* Copies toggle */}
+          <div className="grid grid-cols-2 gap-3 mb-5 px-4">
+            <button
+              onClick={() => !confirming && setCopies(1)}
+              disabled={confirming}
+              className={`rounded-full py-3 px-3 font-semibold text-sm transition ${
+                copies === 1
+                  ? "bg-primary text-primary-foreground shadow-lg"
+                  : "border border-border text-muted-foreground hover:border-primary/60"
+              }`}
+            >
+              <div>1 แผ่น</div>
+              <div className="text-xs opacity-80">{basePrice}.-</div>
+            </button>
+            <button
+              onClick={() => !confirming && setCopies(2)}
+              disabled={confirming}
+              className={`rounded-full py-3 px-3 font-semibold text-sm transition ${
+                copies === 2
+                  ? "bg-primary text-primary-foreground shadow-lg"
+                  : "border border-border text-muted-foreground hover:border-primary/60"
+              }`}
+            >
+              <div>2 แผ่น 🔥 ประหยัดกว่า!</div>
+              <div className="text-xs opacity-80">{basePrice + REPRINT_PRICE}.- (รวมพิมพ์ซ้ำ)</div>
+            </button>
+          </div>
 
           <div className="bg-white p-4 rounded-3xl inline-block shadow-2xl mb-6">
             <img src="/qr-payment.png" alt="PromptPay QR" className="w-[280px] max-w-full" />
@@ -439,25 +458,28 @@ function SessionPage() {
           <p className="text-sm text-muted-foreground mb-2">รับเงินได้จากทุกธนาคาร</p>
           <p className="text-3xl font-heading font-bold text-primary mb-8">{price} ฿</p>
 
-          {!confirming ? (
-            <button
-              onClick={confirmPayment}
-              className="w-full h-14 rounded-full bg-green-600 text-white font-semibold text-lg hover:bg-green-700 transition"
-            >
-              ✓ โอนแล้ว ยืนยันเลย
-            </button>
-          ) : !paid ? (
-            <div className="py-8">
-              <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
-              <p className="font-semibold">กำลังเช็คให้นะ รอแปปนึง...</p>
-              <p className="text-sm text-muted-foreground mt-1">รอสักครู่นะ ใช้เวลาประมาณ 10 วินาที</p>
-            </div>
-          ) : (
-            <div className="py-8">
-              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-3 animate-pop" />
-              <p className="text-xl font-semibold">เรียบร้อย! รับรูปได้เลย 🎉</p>
-            </div>
-          )}
+          <div className="px-4">
+            {!confirming ? (
+              <button
+                onClick={confirmPayment}
+                style={{ width: "calc(100% - 0px)" }}
+                className="h-14 rounded-full bg-green-600 text-white font-semibold text-lg hover:bg-green-700 transition"
+              >
+                ✓ โอนแล้ว ยืนยันเลย
+              </button>
+            ) : !paid ? (
+              <div className="py-8">
+                <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+                <p className="font-semibold">กำลังเช็คให้นะ รอแปปนึง...</p>
+                <p className="text-sm text-muted-foreground mt-1">รอสักครู่นะ ใช้เวลาประมาณ 10 วินาที</p>
+              </div>
+            ) : (
+              <div className="py-8">
+                <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-3 animate-pop" />
+                <p className="text-xl font-semibold">เรียบร้อย! รับรูปได้เลย 🎉</p>
+              </div>
+            )}
+          </div>
         </section>
       )}
 
@@ -538,47 +560,6 @@ function SessionPage() {
 
           {gifOutputUrl && <link rel="prefetch" href={gifOutputUrl} />}
 
-          {/* Upsell modal */}
-          {upsellOpen && (
-            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur flex items-center justify-center p-4 animate-fade-in">
-              <div className="bg-card max-w-md w-full rounded-3xl p-6 shadow-2xl border-2 border-primary">
-                <div className="inline-block px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-bold mb-3">
-                  🔥 ข้อเสนอพิเศษ
-                </div>
-                <h3 className="font-heading font-bold text-2xl mb-3">พิมพ์แผ่นที่ 2 เพิ่มไหม?</h3>
-                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-4">
-                  <div
-                    className="h-full bg-primary transition-[width] duration-100 ease-linear"
-                    style={{ width: `${(upsellRemainingMs / 30000) * 100}%` }}
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground mb-1">
-                  <span className="line-through">ปกติ 69.-</span>
-                </p>
-                <p className="text-xl font-heading font-bold mb-5">เพียง 30.- เท่านั้น! 🎉</p>
-                {secondPrintMessage ? (
-                  <p className="text-center font-semibold text-primary animate-pulse py-3">
-                    {secondPrintMessage}
-                  </p>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    <button
-                      onClick={acceptSecondPrint}
-                      className="w-full h-12 rounded-full bg-primary text-primary-foreground font-semibold hover:scale-[1.02] transition"
-                    >
-                      รับเลย! +30.- 🙌
-                    </button>
-                    <button
-                      onClick={closeUpsell}
-                      className="w-full h-12 rounded-full border border-border font-semibold"
-                    >
-                      ไม่ขอบคุณ
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </section>
       )}
     </main>
