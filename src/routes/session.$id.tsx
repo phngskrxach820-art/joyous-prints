@@ -149,6 +149,7 @@ function SessionPage() {
 
     setTimeout(async () => {
       await supabase.from("sessions").update({ payment_status: "paid" }).eq("id", id);
+      if (isPromo) consumePromo();
       setPaid(true);
       paymentSuccess();
       setStep("rendering");
@@ -170,6 +171,28 @@ function SessionPage() {
       setPhotoQr(pq);
       setGifQr(gq);
       setStep("delivery");
+
+      // Auto-print based on copies chosen
+      if (copies >= 1) {
+        try {
+          const canvas = await urlToCanvas(photoUrl);
+          setIsPrinting(true);
+          setHasPrintedOnce(true);
+          const win = printCanvas(canvas);
+          if (win) { try { win.addEventListener("afterprint", markPrintFinished); } catch {} }
+          setTimeout(markPrintFinished, 12000);
+          if (copies === 2) {
+            setTimeout(async () => {
+              try {
+                const win2 = printCanvas(canvas);
+                if (win2) { try { win2.addEventListener("afterprint", markPrintFinished); } catch {} }
+              } catch (e) { console.error(e); }
+            }, 3000);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
     }, 10000);
   }
 
