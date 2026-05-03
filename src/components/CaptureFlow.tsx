@@ -41,7 +41,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
         setDevices(cams);
         const used = initial.getVideoTracks()[0]?.getSettings().deviceId ?? cams[0]?.deviceId ?? "";
         setSelectedDeviceId(used);
-        setPhase("preview");
+        setPhase("ready");
       } catch (e) {
         const msg = e instanceof Error ? e.message : "ไม่สามารถเข้าถึงกล้อง";
         setErrMsg(msg);
@@ -71,13 +71,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
     }
   }
 
-  // Auto-start countdown when in preview
-  useEffect(() => {
-    if (phase !== "preview") return;
-    const timer = setTimeout(() => beginCountdown(), 800);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, shotIndex]);
+  // No auto countdown — user taps the button.
 
   function beginCountdown() {
     setPhase("countdown");
