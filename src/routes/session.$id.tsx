@@ -57,7 +57,12 @@ function SessionPage() {
   }, []);
 
   const cfg = typeof window !== "undefined" ? loadConfig() : null;
-  const price = cfg?.price ?? 69;
+  const _cfgPrice = cfg?.price ?? 69;
+  const [copies, setCopies] = useState<1 | 2>(1);
+  const promoLeft = typeof window !== "undefined" ? promoRemaining() : 0;
+  const isPromo = promoLeft > 0;
+  const basePrice = isPromo ? PROMO_PRICE : NORMAL_PRICE;
+  const price = copies === 2 ? basePrice + REPRINT_PRICE : basePrice;
 
   async function handleCaptured(blobs: Blob[]) {
     setStep("uploading");
