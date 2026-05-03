@@ -278,6 +278,15 @@ function SessionPage() {
     setIsPrinting(false);
   }
 
+  async function batchPrint(canvas: HTMLCanvasElement, copies: number) {
+    for (let i = 0; i < copies; i++) {
+      if (i > 0) await new Promise((r) => setTimeout(r, 4000));
+      setPrintStatus(copies > 1 ? `🖨️ กำลังพิมพ์แผ่นที่ ${i + 1}...` : "🖨️ กำลังพิมพ์...");
+      printCanvas(canvas);
+    }
+    setPrintStatus(copies > 1 ? `✅ พิมพ์ครบ ${copies} แผ่นแล้ว!` : "✅ สั่งพิมพ์แล้ว!");
+  }
+
   async function doPrintOnce() {
     try {
       const canvas = await urlToCanvas(photoOutputUrl);
