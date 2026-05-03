@@ -44,9 +44,6 @@ function SessionPage() {
   const [gifQr, setGifQr] = useState<string>("");
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrintedOnce, setHasPrintedOnce] = useState(false);
-  const [upsellOpen, setUpsellOpen] = useState(false);
-  const [upsellRemainingMs, setUpsellRemainingMs] = useState(30000);
-  const [secondPrintMessage, setSecondPrintMessage] = useState<string | null>(null);
   const upsellIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const upsellOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
