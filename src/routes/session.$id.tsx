@@ -294,11 +294,6 @@ function SessionPage() {
     await doPrintOnce();
   }
 
-  function closeUpsell() {
-    if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
-    setUpsellOpen(false);
-  }
-
   // (legacy upsell removed — copies chosen at payment now)
 
   return (
