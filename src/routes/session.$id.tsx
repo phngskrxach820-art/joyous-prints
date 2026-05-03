@@ -89,9 +89,7 @@ function SessionPage() {
   async function chooseLayout(l: LayoutId) {
     setLayout(l);
     await supabase.from("sessions").update({ layout: l }).eq("id", id);
-    const isFmt = l === "A" || l === "B";
-    const frames = isFmt ? framesForFormat(l as "A" | "B") : [];
-    setStep(isFmt && frames.length > 1 ? "theme" : "capture");
+    setStep(l === "A" || l === "B" ? "theme" : "capture");
   }
 
   function backFromCapture() {
