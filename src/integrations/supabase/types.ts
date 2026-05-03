@@ -54,6 +54,8 @@ export type Database = {
           photo_url: string | null
           photos: Json | null
           price: number
+          review_handle: string | null
+          review_type: string | null
           updated_at: string
         }
         Insert: {
@@ -66,6 +68,8 @@ export type Database = {
           photo_url?: string | null
           photos?: Json | null
           price?: number
+          review_handle?: string | null
+          review_type?: string | null
           updated_at?: string
         }
         Update: {
@@ -78,6 +82,8 @@ export type Database = {
           photo_url?: string | null
           photos?: Json | null
           price?: number
+          review_handle?: string | null
+          review_type?: string | null
           updated_at?: string
         }
         Relationships: []
