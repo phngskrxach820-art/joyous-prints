@@ -44,8 +44,15 @@ function SessionPage() {
   const [gifQr, setGifQr] = useState<string>("");
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrintedOnce, setHasPrintedOnce] = useState(false);
+  const [printStatus, setPrintStatus] = useState<string>("");
   const upsellIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const upsellOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reviewer promo
+  const [reviewStory, setReviewStory] = useState(false);
+  const [reviewClip, setReviewClip] = useState(false);
+  const [reviewHandle, setReviewHandle] = useState("");
+  const [reviewerActive, setReviewerActive] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -58,9 +65,24 @@ function SessionPage() {
   const _cfgPrice = cfg?.price ?? 69;
   const [copies, setCopies] = useState<1 | 2>(1);
   const promoLeft = typeof window !== "undefined" ? promoRemaining() : 0;
-  const isPromo = promoLeft > 0;
+  const isPromo = promoLeft > 0 || reviewerActive;
   const basePrice = isPromo ? PROMO_PRICE : NORMAL_PRICE;
   const price = copies === 2 ? basePrice + REPRINT_PRICE : basePrice;
+
+  function activateReviewerPromo() {
+    if (!reviewStory && !reviewClip) {
+      toast.error("เลือกอย่างน้อย 1 ข้อนะ");
+      return;
+    }
+    setReviewerActive(true);
+    const reviewType = reviewStory && reviewClip ? "both" : reviewStory ? "story_tag" : "clip";
+    supabase
+      .from("sessions")
+      .update({ review_type: reviewType, review_handle: reviewHandle || null })
+      .eq("id", id)
+      .then(() => {});
+    toast.success("ขอบคุณล่วงหน้าเลยนะ! ราคาพิเศษ 49.- 🎉");
+  }
 
   async function handleCaptured(blobs: Blob[]) {
     setStep("uploading");
