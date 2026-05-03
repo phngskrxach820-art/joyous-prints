@@ -12,7 +12,7 @@ import QRCode from "qrcode";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Heng Photos" },
+      { title: "Heng Photobooth" },
       { name: "description", content: "Photo Booth by Heng" },
     ],
   }),
@@ -74,7 +74,7 @@ function Home() {
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card/50 mb-4">
           <Camera className="h-3.5 w-3.5 text-primary" />
           <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-body">
-            Heng Photos
+            Heng Photobooth
           </span>
         </div>
         <h1 className="text-4xl md:text-6xl font-heading font-bold tracking-tight leading-tight">

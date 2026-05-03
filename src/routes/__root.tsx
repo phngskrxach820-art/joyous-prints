@@ -30,8 +30,8 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "Heng Photos" },
-      { name: "application-name", content: "Heng Photos" },
+      { title: "Heng Photobooth" },
+      { name: "application-name", content: "Heng Photobooth" },
       { name: "description", content: "Photo Booth by Heng" },
       { name: "robots", content: "noindex, nofollow, noarchive, nosnippet, noimageindex" },
       { name: "googlebot", content: "noindex, nofollow" },
@@ -39,7 +39,7 @@ export const Route = createRootRoute({
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "Heng Photos" },
+      { name: "apple-mobile-web-app-title", content: "Heng Photobooth" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

@@ -1,6 +1,6 @@
 {
-  "name": "Heng Photos",
-  "short_name": "Heng Photos",
+  "name": "Heng Photobooth",
+  "short_name": "Heng Photobooth",
   "description": "Photo Booth by Heng",
   "start_url": "/",
   "display": "standalone",
