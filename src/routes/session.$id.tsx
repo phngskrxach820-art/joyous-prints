@@ -552,75 +552,42 @@ function SessionPage() {
       )}
 
       {step === "delivery" && (
-        <section className="animate-fade-in">
-          <h2 className="text-3xl font-heading font-bold mb-6 text-center">เสร็จแล้ว! ขอบคุณนะ 🎉</h2>
-
-          {/* Output preview */}
-          <div className="flex justify-center mb-8">
-            <div className="bg-card p-3 rounded-2xl shadow-2xl max-w-md">
-              <img src={photoOutputUrl} alt="output" className="w-full rounded-xl" />
-            </div>
+        <section className="animate-fade-in max-w-2xl mx-auto text-center">
+          <div className="flex justify-center mb-4">
+            <CheckCircle2 className="h-24 w-24 text-green-500 animate-pop" />
           </div>
+          <h2 className="text-3xl font-heading font-bold mb-8">สั่งพิมพ์เรียบร้อยแล้ว 🎉</h2>
 
-          {/* Print section (top) */}
-          <div className="max-w-md mx-auto mb-8 p-6 rounded-3xl border border-border bg-card text-center">
-            <p className="text-2xl mb-2">🖨️</p>
-            <h3 className="font-heading font-bold text-lg mb-3">ปริ้นท์รับเลย</h3>
-            <button
-              onClick={handlePrintClick}
-              className="w-full h-12 rounded-full bg-primary text-primary-foreground font-semibold hover:scale-[1.02] transition inline-flex items-center justify-center gap-2"
-            >
-              <Printer className="h-4 w-4" /> ปริ้นท์รับเลย 🖨️
-            </button>
-            {isPrinting && (
-              <p className="mt-4 text-sm font-semibold text-primary animate-pulse">
-                🖨️ กำลังพิมพ์อยู่นะ รอแปปนึง...
-              </p>
-            )}
-            {!isPrinting && hasPrintedOnce && (
-              <p className="mt-4 text-sm font-semibold text-primary">
-                ✅ สั่งพิมพ์แล้ว!
-              </p>
-            )}
-          </div>
-
-          {/* Scan to save section (bottom) */}
-          <div className="max-w-2xl mx-auto">
-            <h3 className="text-center font-heading font-bold text-xl mb-5">📲 สแกนเซฟลงมือถือ</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-3xl border border-border bg-card text-center">
-                <p className="font-heading font-bold mb-3">📸 เซฟรูปนิ่ง</p>
-                {photoQr && (
-                  <div className="bg-white p-2 rounded-xl inline-block">
-                    <img src={photoQr} alt="QR เซฟรูป" className="w-[200px] h-[200px] block" />
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground mt-3">สแกนรับรูป JPEG</p>
-              </div>
-              <div className="p-4 rounded-3xl border border-border bg-card text-center">
-                <p className="font-heading font-bold mb-3">✨ เซฟ GIF</p>
-                {gifQr && (
-                  <div className="bg-white p-2 rounded-xl inline-block">
-                    <img src={gifQr} alt="QR เซฟ GIF" className="w-[200px] h-[200px] block" />
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground mt-3">สแกนรับ GIF เคลื่อนไหว</p>
-              </div>
-            </div>
-            <p className="text-center text-muted-foreground mt-4" style={{ fontSize: 12 }}>
-              ลิงก์นี้ใช้ได้ 24 ชั่วโมง
+          {(isPrinting || printStatus) && (
+            <p className={`mb-6 text-base font-semibold text-primary ${isPrinting ? "animate-pulse" : ""}`}>
+              {printStatus || "🖨️ กำลังพิมพ์..."}
             </p>
+          )}
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="p-4 rounded-3xl border border-border bg-card text-center">
+              <p className="font-heading font-bold mb-3">📸 เซฟรูปนิ่ง</p>
+              {photoQr && (
+                <div className="bg-white p-2 rounded-xl inline-block">
+                  <img src={photoQr} alt="QR เซฟรูป" className="w-[200px] h-[200px] block" />
+                </div>
+              )}
+            </div>
+            <div className="p-4 rounded-3xl border border-border bg-card text-center">
+              <p className="font-heading font-bold mb-3">✨ เซฟ GIF</p>
+              {gifQr && (
+                <div className="bg-white p-2 rounded-xl inline-block">
+                  <img src={gifQr} alt="QR เซฟ GIF" className="w-[200px] h-[200px] block" />
+                </div>
+              )}
+            </div>
           </div>
 
-          <button
-            onClick={() => navigate({ to: "/" })}
-            className="block mx-auto mt-10 text-sm text-muted-foreground hover:text-foreground"
-          >
-            จบ session
-          </button>
+          <p className="text-center text-muted-foreground" style={{ fontSize: 12 }}>
+            ⏰ ลิงก์ใช้ได้ 24 ชั่วโมง
+          </p>
 
           {gifOutputUrl && <link rel="prefetch" href={gifOutputUrl} />}
-
         </section>
       )}
     </main>
