@@ -519,11 +519,11 @@ function SessionPage() {
           <p className="text-sm text-muted-foreground mb-2">รับเงินได้จากทุกธนาคาร</p>
           <p className="text-3xl font-heading font-bold text-primary mb-8">{price} ฿</p>
 
-          <div className="px-4">
+          <div>
             {!confirming ? (
               <button
                 onClick={confirmPayment}
-                style={{ width: "calc(100% - 0px)" }}
+                style={{ width: "calc(100% - 32px)", marginLeft: 16, marginRight: 16 }}
                 className="h-14 rounded-full bg-green-600 text-white font-semibold text-lg hover:bg-green-700 transition"
               >
                 ✓ โอนแล้ว ยืนยันเลย
