@@ -317,9 +317,11 @@ function SessionPage() {
 
   return (
     <main className="min-h-screen px-4 py-6 max-w-5xl mx-auto">
-      <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
-        <ArrowLeft className="h-4 w-4" /> หน้าแรก
-      </Link>
+      {step !== "delivery" && (
+        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
+          <ArrowLeft className="h-4 w-4" /> หน้าแรก
+        </Link>
+      )}
 
       {step === "capture" && (
         <CaptureFlow
