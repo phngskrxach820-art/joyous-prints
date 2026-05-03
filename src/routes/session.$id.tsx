@@ -86,8 +86,9 @@ function SessionPage() {
   async function chooseLayout(l: LayoutId) {
     setLayout(l);
     await supabase.from("sessions").update({ layout: l }).eq("id", id);
-    const frames = framesForFormat(l);
-    setStep(frames.length > 1 ? "theme" : "capture");
+    const isFmt = l === "A" || l === "B";
+    const frames = isFmt ? framesForFormat(l as "A" | "B") : [];
+    setStep(isFmt && frames.length > 1 ? "theme" : "capture");
   }
 
   function backFromCapture() {
@@ -417,7 +418,7 @@ function SessionPage() {
         </section>
       )}
 
-      {step === "theme" && (
+      {step === "theme" && (layout === "A" || layout === "B") && (
         <ThemePicker
           format={layout}
           onBack={() => setStep("format")}
