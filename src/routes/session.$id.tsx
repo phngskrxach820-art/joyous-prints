@@ -386,19 +386,22 @@ function SessionPage() {
       )}
 
       {step === "format" && (
-        <section className="animate-fade-in">
-          <h2 className="text-3xl md:text-4xl font-heading font-bold mb-2">อยากได้แบบไหน?</h2>
-          <p className="text-muted-foreground mb-2">เลือกฟอร์แมตสำหรับปริ้นท์</p>
-          <p className="text-sm text-muted-foreground mb-8">✨ ทุกแบบจะได้ GIF เคลื่อนไหวแถมไปด้วยฟรี!</p>
+        <section className="animate-fade-in flex flex-col" style={{ minHeight: "calc(100vh - 96px)" }}>
+          <h2 className="text-2xl md:text-3xl font-heading font-bold mb-1">อยากได้แบบไหน?</h2>
+          <p className="text-sm text-muted-foreground mb-1">เลือกฟอร์แมตสำหรับปริ้นท์</p>
+          <p className="text-xs text-muted-foreground mb-4">✨ ทุกแบบจะได้ GIF เคลื่อนไหวแถมไปด้วยฟรี!</p>
 
-          <div className="grid sm:grid-cols-2 gap-4 mb-8">
+          <div className="grid sm:grid-cols-2 gap-3 flex-1 items-stretch">
             {FORMAT_META.map((m) => (
-              <FormatCard
-                key={m.id}
-                meta={m}
-                selected={layout === m.id}
-                onSelect={(id) => chooseLayout(id)}
-              />
+              <div key={m.id} style={{ maxHeight: "42vh" }} className="flex">
+                <div className="w-full">
+                  <FormatCard
+                    meta={m}
+                    selected={layout === m.id}
+                    onSelect={(id) => chooseLayout(id)}
+                  />
+                </div>
+              </div>
             ))}
           </div>
         </section>
