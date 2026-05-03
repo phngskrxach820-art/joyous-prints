@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera as CamIcon, RefreshCw, ArrowLeft } from "lucide-react";
+import { Camera as CamIcon, ArrowLeft } from "lucide-react";
 import { tick, shutter } from "@/lib/audio";
 
 type Props = {
   onComplete: (photos: Blob[]) => void;
   totalShots?: number;
   onBack?: () => void;
+  /** target ratio width/height. Format A strip => 9/16, Format B => 3/4 */
+  aspectRatio?: number;
 };
 
-export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
+export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 3 / 4 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [phase, setPhase] = useState<"init" | "ready" | "preview" | "countdown" | "flash" | "review" | "done" | "error">("init");
-  const [shotIndex, setShotIndex] = useState(0); // 0..3
+  const [phase, setPhase] = useState<"init" | "ready" | "pause" | "countdown" | "flash" | "review" | "done" | "error">("init");
+  const [shotIndex, setShotIndex] = useState(0);
   const [count, setCount] = useState(3);
   const [thumbs, setThumbs] = useState<string[]>([]);
   const [blobs, setBlobs] = useState<Blob[]>([]);
@@ -20,12 +22,10 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
 
-  // Init camera
   useEffect(() => {
     let cancelled = false;
     async function start() {
       try {
-        // Request a permissive default first to get permission, then enumerate
         const initial = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
           audio: false,
@@ -55,7 +55,6 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
     };
   }, []);
 
-  // Switch camera
   async function switchCamera(deviceId: string) {
     try {
       streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -70,8 +69,6 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
       console.error(e);
     }
   }
-
-  // No auto countdown — user taps the button.
 
   function beginCountdown() {
     setPhase("countdown");
@@ -97,23 +94,20 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
     if (!video) return;
     const vw = video.videoWidth;
     const vh = video.videoHeight;
-    // Crop to portrait 3:4 from center of landscape video
-    const targetRatio = 3 / 4;
-    let cropW = vh * targetRatio;
+    let cropW = vh * aspectRatio;
     let cropH = vh;
     if (cropW > vw) {
       cropW = vw;
-      cropH = vw / targetRatio;
+      cropH = vw / aspectRatio;
     }
     const sx = (vw - cropW) / 2;
     const sy = (vh - cropH) / 2;
-    const outW = 900;
     const outH = 1200;
+    const outW = Math.round(outH * aspectRatio);
     const c = document.createElement("canvas");
     c.width = outW;
     c.height = outH;
     const ctx = c.getContext("2d")!;
-    // mirror selfie
     ctx.translate(outW, 0);
     ctx.scale(-1, 1);
     ctx.drawImage(video, sx, sy, cropW, cropH, 0, 0, outW, outH);
@@ -127,15 +121,19 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
     setThumbs(newThumbs);
     setPhase("flash");
     setTimeout(() => {
-      // Show thumbnail review for 1.5s
       setPhase("review");
       setTimeout(() => {
         if (newBlobs.length >= totalShots) {
           setPhase("done");
-          setTimeout(() => onComplete(newBlobs), 2000);
+          setTimeout(() => onComplete(newBlobs), 1500);
         } else {
           setShotIndex((i) => i + 1);
-          setPhase("ready");
+          // Brief "get ready" pause, then auto-continue
+          setPhase("pause");
+          setTimeout(() => {
+            setPhase("countdown");
+            setCount(3);
+          }, 1000);
         }
       }, 1500);
     }, 180);
@@ -156,9 +154,13 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
     );
   }
 
+  // Crop guide width as % of video width (assumes 16:9 source)
+  const sourceRatio = 16 / 9;
+  const cropPctW = Math.min(1, aspectRatio / sourceRatio); // fraction of width
+  const sidePct = ((1 - cropPctW) / 2) * 100;
+
   return (
     <div className="relative min-h-[80vh] flex flex-col items-center">
-      {/* Back button */}
       {onBack && phase === "ready" && (
         <button
           onClick={onBack}
@@ -168,12 +170,10 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
         </button>
       )}
 
-      {/* Progress */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-full bg-card/80 backdrop-blur border border-border text-sm font-semibold">
         รูปที่ {Math.min(shotIndex + 1, totalShots)}/{totalShots}
       </div>
 
-      {/* Camera selector */}
       {devices.length > 1 && phase === "ready" && (
         <div className="absolute top-4 right-4 z-20">
           <select
@@ -190,7 +190,6 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
         </div>
       )}
 
-      {/* Video stage */}
       <div className="relative w-full max-w-4xl mx-auto aspect-video rounded-3xl overflow-hidden bg-black mt-16 shadow-2xl">
         <video
           ref={videoRef}
@@ -198,15 +197,12 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
           playsInline
           muted
           className="w-full h-full object-cover"
-          style={{ transform: "scaleX(-1)" }} // mirror like a selfie cam
+          style={{ transform: "scaleX(-1)" }}
         />
+        <div className="absolute inset-y-0 left-0 bg-black/60 pointer-events-none" style={{ width: `${sidePct}%` }} />
+        <div className="absolute inset-y-0 right-0 bg-black/60 pointer-events-none" style={{ width: `${sidePct}%` }} />
+        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-2 border-white/70 rounded-xl pointer-events-none" style={{ width: `${cropPctW * 100}%` }} />
 
-        {/* Portrait crop guides — dim outside 3:4 area */}
-        <div className="absolute inset-y-0 left-0 bg-black/60 pointer-events-none" style={{ width: "28.9%" }} />
-        <div className="absolute inset-y-0 right-0 bg-black/60 pointer-events-none" style={{ width: "28.9%" }} />
-        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-2 border-white/70 rounded-xl pointer-events-none" style={{ width: "42.2%" }} />
-
-        {/* Countdown */}
         {phase === "countdown" && count > 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div
@@ -219,12 +215,18 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
           </div>
         )}
 
-        {/* Flash */}
+        {phase === "pause" && (
+          <div className="absolute inset-x-0 bottom-6 flex items-center justify-center pointer-events-none">
+            <div className="px-5 py-2 rounded-full bg-black/60 text-white text-base font-semibold backdrop-blur animate-fade-in">
+              เตรียมท่าต่อไปได้เลย...
+            </div>
+          </div>
+        )}
+
         {phase === "flash" && (
           <div className="absolute inset-0 bg-white animate-flash pointer-events-none" />
         )}
 
-        {/* Review thumbnail */}
         {phase === "review" && thumbs.length > 0 && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
             <img
@@ -235,7 +237,6 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
           </div>
         )}
 
-        {/* Done — 2x2 grid */}
         {phase === "done" && (
           <div className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center p-8 backdrop-blur-sm animate-fade-in">
             <div className="grid grid-cols-2 gap-3 max-w-md mb-6">
@@ -248,7 +249,6 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
         )}
       </div>
 
-      {/* Manual trigger */}
       {phase === "ready" && (
         <button
           onClick={beginCountdown}
@@ -259,7 +259,6 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack }: Props) {
         </button>
       )}
 
-      {/* Thumbnail strip below */}
       <div className="mt-6 flex gap-3">
         {Array.from({ length: totalShots }, (_, i) => i).map((i) => (
           <div
