@@ -295,23 +295,6 @@ function SessionPage() {
     setIsPrinting(true);
     setHasPrintedOnce(true);
     await doPrintOnce();
-    if (upsellOpenTimerRef.current) clearTimeout(upsellOpenTimerRef.current);
-    upsellOpenTimerRef.current = setTimeout(() => {
-      setUpsellRemainingMs(30000);
-      setUpsellOpen(true);
-      if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
-      upsellIntervalRef.current = setInterval(() => {
-        setUpsellRemainingMs((prev) => {
-          const next = prev - 100;
-          if (next <= 0) {
-            if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
-            setUpsellOpen(false);
-            return 0;
-          }
-          return next;
-        });
-      }, 100);
-    }, 1000);
   }
 
   function closeUpsell() {
@@ -319,25 +302,7 @@ function SessionPage() {
     setUpsellOpen(false);
   }
 
-  async function acceptSecondPrint() {
-    if (upsellIntervalRef.current) clearInterval(upsellIntervalRef.current);
-    setSecondPrintMessage("กำลังพิมพ์แผ่นที่ 2... 🖨️");
-    setIsPrinting(true);
-    try {
-      const canvas = await urlToCanvas(photoOutputUrl);
-      const win = printCanvas(canvas);
-      if (win) {
-        try { win.addEventListener("afterprint", markPrintFinished); } catch {}
-      }
-      setTimeout(markPrintFinished, 12000);
-    } catch (e) {
-      console.error(e);
-    }
-    setTimeout(() => {
-      setUpsellOpen(false);
-      setSecondPrintMessage(null);
-    }, 2000);
-  }
+  // (legacy upsell removed — copies chosen at payment now)
 
   return (
     <main className="min-h-screen px-4 py-6 max-w-5xl mx-auto">
