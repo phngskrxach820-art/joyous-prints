@@ -60,12 +60,12 @@ export function FormatCard({
         if (longPressRef.current) clearTimeout(longPressRef.current);
         setHovering(false);
       }}
-      className={`group relative rounded-3xl border-2 overflow-hidden transition-all text-left bg-card ${
+      className={`group relative rounded-3xl border-2 overflow-hidden transition-all text-left bg-card flex flex-col w-full h-full ${
         selected ? "border-primary scale-[1.02]" : "border-border hover:border-primary/70 hover:scale-[1.02]"
       }`}
     >
-      {/* Top 65%: frame preview */}
-      <div className="relative aspect-[2/3] bg-muted/40 flex items-center justify-center overflow-hidden">
+      {/* Frame preview area */}
+      <div className="relative flex-1 min-h-0 bg-muted/40 flex items-center justify-center overflow-hidden">
         {frames.length === 0 && <span className="text-6xl opacity-50">{meta.emoji}</span>}
         {frames.map((f, i) => (
           <img
