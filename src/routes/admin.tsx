@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Lock, Trash2, RefreshCw } from "lucide-react";
+import { Lock, RefreshCw } from "lucide-react";
 import { loadConfig, saveConfig, defaults, THEMES, applyTheme, type AdminConfig } from "@/lib/admin-config";
 import { toast } from "sonner";
 
