@@ -81,7 +81,8 @@ function SessionPage() {
       .update({ review_type: reviewType, review_handle: reviewHandle || null })
       .eq("id", id)
       .then(() => {});
-    toast.success("ขอบคุณล่วงหน้าเลยนะ! ราคาพิเศษ 49.- 🎉");
+    chime();
+    toast.success("✅ แชร์ปุ๊บ ลดปั๊บ! ราคา " + PROMO_PRICE + ".- 🎉");
   }
 
   async function handleCaptured(blobs: Blob[]) {
