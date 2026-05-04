@@ -31,3 +31,20 @@ export function paymentSuccess() {
   notes.forEach((f, i) => setTimeout(() => beep(f, 0.18, 0.22), i * 110));
 }
 
+// Short pleasant chime — 440Hz → 880Hz over 0.3s
+export function chime() {
+  const ac = getCtx();
+  if (!ac) return;
+  const osc = ac.createOscillator();
+  const g = ac.createGain();
+  osc.type = "sine";
+  const t0 = ac.currentTime;
+  osc.frequency.setValueAtTime(440, t0);
+  osc.frequency.exponentialRampToValueAtTime(880, t0 + 0.3);
+  g.gain.setValueAtTime(0.22, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+  osc.connect(g).connect(ac.destination);
+  osc.start(t0);
+  osc.stop(t0 + 0.32);
+}
+
