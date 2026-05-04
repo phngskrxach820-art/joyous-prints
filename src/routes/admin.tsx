@@ -93,12 +93,76 @@ function Admin() {
     );
   }
 
+  function handleHeaderTap() {
+    const now = Date.now();
+    tapTimesRef.current = [...tapTimesRef.current.filter((t) => now - t < 1500), now];
+    if (tapTimesRef.current.length >= 3) {
+      tapTimesRef.current = [];
+      setShowReviews((v) => !v);
+      if (!showReviews) loadReviews();
+    }
+  }
+
+  async function loadReviews() {
+    const { data } = await supabase
+      .from("sessions")
+      .select("id,created_at,review_type,review_handle")
+      .not("review_type", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    setReviews((data as ReviewSession[] | null) ?? []);
+  }
+
+  const todayCount = reviews.filter((r) => {
+    const d = new Date(r.created_at);
+    const t = new Date();
+    return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate();
+  }).length;
+
   return (
     <main className="min-h-screen px-4 py-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-heading font-bold">Admin</h1>
+        <h1 onClick={handleHeaderTap} className="text-3xl font-heading font-bold cursor-pointer select-none">Admin</h1>
         <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← หน้าแรก</Link>
       </div>
+
+      {showReviews && (
+        <section className="mb-8 p-6 rounded-3xl bg-card border border-primary/40">
+          <h2 className="font-heading font-bold text-xl mb-4">📊 ข้อมูลรีวิว</h2>
+          <div className="flex gap-4 mb-4 text-sm">
+            <span className="px-3 py-1.5 rounded-full bg-primary/15 text-primary font-semibold">วันนี้: {todayCount}</span>
+            <span className="px-3 py-1.5 rounded-full bg-muted">ทั้งหมด: {reviews.length}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-muted-foreground border-b border-border">
+                  <th className="py-2 pr-3">วันที่</th>
+                  <th className="py-2 pr-3">เวลา</th>
+                  <th className="py-2 pr-3">Handle</th>
+                  <th className="py-2 pr-3">ประเภท</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reviews.length === 0 && (
+                  <tr><td colSpan={4} className="py-3 text-muted-foreground">ยังไม่มีข้อมูล</td></tr>
+                )}
+                {reviews.map((r) => {
+                  const d = new Date(r.created_at);
+                  return (
+                    <tr key={r.id} className="border-b border-border/50">
+                      <td className="py-2 pr-3">{d.toLocaleDateString("th-TH")}</td>
+                      <td className="py-2 pr-3">{d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}</td>
+                      <td className="py-2 pr-3 font-mono text-xs">{r.review_handle ?? "-"}</td>
+                      <td className="py-2 pr-3">{r.review_type}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Theme picker */}
       <section className="mb-8 p-6 rounded-3xl bg-card border border-border">
