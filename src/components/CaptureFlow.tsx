@@ -27,7 +27,12 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
     async function start() {
       try {
         const initial = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            aspectRatio: { ideal: 16 / 9 },
+            facingMode: "user",
+          },
           audio: false,
         });
         if (cancelled) {
