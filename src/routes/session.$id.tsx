@@ -452,10 +452,11 @@ function SessionPage() {
           {!reviewerActive && promoLeft <= 0 && (
             <div className="mb-5 px-4 text-left">
               <div className="rounded-2xl border border-border bg-card p-4">
-                <p className="font-heading font-bold mb-3 text-center">รีวิวให้เราแลกส่วนลดได้เลย! 📱</p>
+                <p className="font-heading font-bold text-center">แชร์ปุ๊บ ลดปั๊บ! 🔥</p>
+                <p className="text-xs text-muted-foreground mb-3 text-center">ลดเหลือ {PROMO_PRICE}.- ทันที</p>
                 <label className="flex items-center gap-2 mb-2 cursor-pointer">
                   <input type="checkbox" checked={reviewStory} onChange={(e) => setReviewStory(e.target.checked)} />
-                  <span className="text-sm">แท็กร้านใน Story/Post</span>
+                  <span className="text-sm">โพสต์/Story แท็กร้านให้เรา</span>
                 </label>
                 <label className="flex items-center gap-2 mb-3 cursor-pointer">
                   <input type="checkbox" checked={reviewClip} onChange={(e) => setReviewClip(e.target.checked)} />
