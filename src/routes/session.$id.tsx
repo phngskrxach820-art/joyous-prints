@@ -6,7 +6,7 @@ import { ArrowLeft, CheckCircle2, Loader2, Sparkles, Check } from "lucide-react"
 import { CaptureFlow } from "@/components/CaptureFlow";
 import { LAYOUTS, renderLayout, renderLayoutD, type LayoutId } from "@/lib/composer";
 import { loadConfig } from "@/lib/admin-config";
-import { paymentSuccess } from "@/lib/audio";
+import { paymentSuccess, chime } from "@/lib/audio";
 import { FormatCard, FORMAT_META } from "@/components/FormatCard";
 import { ThemePicker } from "@/components/ThemePicker";
 // frame catalog accessed inside ThemePicker
