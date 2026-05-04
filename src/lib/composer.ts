@@ -115,37 +115,64 @@ function drawSlotShape(ctx: CanvasRenderingContext2D, slot: Slot) {
 }
 
 /** Layout A — 2x6 strip with booth1 frame, 8 slots (4 photos x 2 columns) */
-export async function renderLayoutA(photos: string[], filter: string = "none"): Promise<Blob> {
+export async function renderLayoutA(
+  photos: string[],
+  filter: string = "none",
+): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1240;
   canvas.height = 1844;
   const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
   // 1. White background
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, 1240, 1844);
 
+  // 2. Load photos and frame
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
   const frame = await loadStripFrame();
 
-  // 2. Draw photos into slots (left: 1-4, right: 1-4)
-  STRIP_SLOTS.forEach((slot, i) => {
-    const photo = imgs[i % 4];
+  // 3. Slot definitions
+  const LEFT_SLOTS: Slot[] = [
+    { x: 80, y: 252, w: 440, h: 237, shape: "oval" },
+    { x: 80, y: 535, w: 440, h: 259, shape: "rect" },
+    { x: 80, y: 840, w: 440, h: 237, shape: "oval" },
+    { x: 80, y: 1124, w: 439, h: 259, shape: "rect" },
+  ];
+  const RIGHT_SLOTS: Slot[] = [
+    { x: 700, y: 253, w: 440, h: 237, shape: "oval" },
+    { x: 700, y: 536, w: 439, h: 259, shape: "rect" },
+    { x: 700, y: 842, w: 440, h: 236, shape: "oval" },
+    { x: 700, y: 1125, w: 439, h: 259, shape: "rect" },
+  ];
+
+  // 4. Draw photos into slots
+  const allSlots = [...LEFT_SLOTS, ...RIGHT_SLOTS];
+  allSlots.forEach((slot, i) => {
+    const img = imgs[i % 4];
+    if (!img) return;
     ctx.save();
     drawSlotShape(ctx, slot);
     ctx.clip();
-    ctx.filter = filter || "none";
-    // object-fit cover
-    const ratio = Math.max(slot.w / photo.width, slot.h / photo.height);
-    const nw = photo.width * ratio;
-    const nh = photo.height * ratio;
+    if (filter && filter !== "none") {
+      ctx.filter = filter;
+    }
+    const ratio = Math.max(
+      slot.w / img.naturalWidth,
+      slot.h / img.naturalHeight,
+    );
+    const nw = img.naturalWidth * ratio;
+    const nh = img.naturalHeight * ratio;
     const ox = slot.x + (slot.w - nw) / 2;
     const oy = slot.y + (slot.h - nh) / 2;
-    ctx.drawImage(photo, ox, oy, nw, nh);
+    ctx.drawImage(img, ox, oy, nw, nh);
+    ctx.filter = "none";
     ctx.restore();
   });
 
-  // 3. Draw frame PNG on top
+  // 5. Draw frame ONCE on top (full canvas size)
   if (frame) {
     ctx.drawImage(frame, 0, 0, 1240, 1844);
   }
