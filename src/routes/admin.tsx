@@ -18,6 +18,13 @@ type Session = {
   price: number;
 };
 
+type ReviewSession = {
+  id: string;
+  created_at: string;
+  review_type: string | null;
+  review_handle: string | null;
+};
+
 function Admin() {
   const [authed, setAuthed] = useState(false);
   const [pin, setPin] = useState("");
