@@ -587,9 +587,17 @@ function SessionPage() {
             </div>
           </div>
 
-          <p className="text-center text-muted-foreground" style={{ fontSize: 12 }}>
+          <p className="text-center text-muted-foreground mb-6" style={{ fontSize: 12 }}>
             ⏰ ลิงก์ใช้ได้ 24 ชั่วโมง
           </p>
+
+          <Link
+            to="/"
+            style={{ width: "calc(100% - 32px)", marginLeft: 16, marginRight: 16 }}
+            className="inline-flex items-center justify-center h-14 rounded-full border-2 border-primary text-primary font-semibold text-lg hover:bg-primary/10 transition"
+          >
+            🏠 กลับหน้าแรก
+          </Link>
 
           {gifOutputUrl && <link rel="prefetch" href={gifOutputUrl} />}
         </section>
