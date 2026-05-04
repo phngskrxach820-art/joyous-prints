@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import type { Frame, FormatId } from "@/lib/frames";
 import { framesForFormat } from "@/lib/frames";
-import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE } from "@/lib/promo";
+import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining } from "@/lib/promo";
 
 export type FormatMeta = {
   id: FormatId;
   title: string;
   shotsLabel: string;
   emoji: string;
+  popular?: boolean;
 };
 
 export const FORMAT_META: FormatMeta[] = [
-  { id: "A", title: "แบ่งให้เพื่อน 💑", shotsLabel: "ถ่าย 3 รูป ได้ 2 แถบ", emoji: "💑" },
+  { id: "A", title: "แบ่งให้เพื่อน 💑 (2x6)", shotsLabel: "ถ่าย 4 รูป ได้ 2 แถบเหมือนกัน", emoji: "💑", popular: true },
   { id: "B", title: "เต็มแผ่น 4x6 🖼️", shotsLabel: "ถ่าย 4 รูป เต็มแผ่น", emoji: "🖼️" },
 ];
 
