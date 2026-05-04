@@ -32,7 +32,7 @@ function Admin() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [showReviews, setShowReviews] = useState(false);
   const [reviews, setReviews] = useState<ReviewSession[]>([]);
-  const tapTimesRef = (typeof window !== "undefined") ? (window as unknown as { __tapTimes?: number[] }) : null;
+  const tapTimesRef = useRef<number[]>([]);
 
   useEffect(() => {
     setCfg(loadConfig());
