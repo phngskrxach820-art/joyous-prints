@@ -14,8 +14,8 @@ export type Frame = {
 };
 
 const DEFAULTS: Frame[] = [
-  { id: "strip-default", format: "A", filename: "frame_strip_default.png", url: "/frames/frame_default.png" },
-  { id: "full-default",  format: "B", filename: "frame_full_default.png",  url: "/frames/frame_default.png" },
+  { id: "strip-default", format: "A", filename: "frame_strip_default.png", url: "/frames/frame_strip_default.png" },
+  { id: "full-default",  format: "B", filename: "frame_full_default.png",  url: "/frames/frame_full_default.png" },
 ];
 
 export function loadFrames(): Frame[] {
