@@ -97,13 +97,26 @@ export function FormatCard({
         )}
       </div>
 
-      {/* Bottom 35%: info */}
+      {/* Popular badge */}
+      {meta.popular && (
+        <span className="absolute top-2 right-2 z-10 px-2 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shadow">
+          ⭐ ยอดนิยม
+        </span>
+      )}
+
+      {/* Bottom: info */}
       <div className="p-4">
         <h3 className="font-heading font-bold text-lg mb-1">{meta.title}</h3>
         <p className="text-xs text-muted-foreground mb-2">{meta.shotsLabel}</p>
         <div className="flex items-baseline gap-2">
-          <span className="text-xs text-muted-foreground line-through">ปกติ {NORMAL_PRICE}.-</span>
-          <span className="text-base font-bold text-primary">โปร {PROMO_PRICE}.-</span>
+          {typeof window !== "undefined" && promoRemaining() > 0 ? (
+            <>
+              <span className="text-xs text-muted-foreground line-through">ปกติ {NORMAL_PRICE}.-</span>
+              <span className="text-base font-bold text-primary">โปร {PROMO_PRICE}.-</span>
+            </>
+          ) : (
+            <span className="text-base font-bold text-primary">{NORMAL_PRICE}.-</span>
+          )}
         </div>
         <p className="text-[11px] text-muted-foreground mt-1">+ ปริ้นท์ซ้ำ {REPRINT_PRICE}.-</p>
       </div>
