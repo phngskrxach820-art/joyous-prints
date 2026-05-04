@@ -61,19 +61,12 @@ function watermark(ctx: CanvasRenderingContext2D, x: number, y: number, align: C
   ctx.restore();
 }
 
-async function loadFrame(): Promise<HTMLImageElement | null> {
-  // Try the canonical admin upload path first, then legacy fallback
-  const candidates = ["/frames/frame_default.png", "/frame_default.png"];
+async function loadFrame(format: "A" | "B" = "B"): Promise<HTMLImageElement | null> {
+  const file = format === "A" ? "frame_strip_default.png" : "frame_full_default.png";
+  const candidates = [`/frames/${file}`, "/frames/frame_default.png", "/frame_default.png"];
   for (const src of candidates) {
     try {
-      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const i = new Image();
-        i.crossOrigin = "anonymous";
-        i.onload = () => resolve(i);
-        i.onerror = reject;
-        i.src = src;
-      });
-      return img;
+      return await loadImg(src);
     } catch {
       // try next
     }
@@ -97,7 +90,8 @@ const STRIP_SLOTS: Slot[] = [
 async function loadStripFrame(): Promise<HTMLImageElement | null> {
   try {
     return await loadImg("/frames/frame_strip_default.png");
-  } catch {
+  } catch (e) {
+    console.error("Failed to load strip frame:", e);
     return null;
   }
 }
