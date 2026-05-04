@@ -70,6 +70,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
+    fetch("/frames/frame_strip_default.png")
+      .then((r) => console.log("Frame A status:", r.status))
+      .catch((e) => console.error("Frame A failed:", e));
+    fetch("/frames/frame_full_default.png")
+      .then((r) => console.log("Frame B status:", r.status))
+      .catch((e) => console.error("Frame B failed:", e));
     let isInIframe = false;
     try { isInIframe = window.self !== window.top; } catch { isInIframe = true; }
     const host = window.location.hostname;
@@ -78,7 +84,6 @@ function RootComponent() {
       host.includes("lovableproject.com") ||
       host.includes("lovable.app") && host.includes("preview");
     if (isInIframe || isPreview || import.meta.env.DEV) {
-      // Make sure no SW lingers in preview/dev
       navigator.serviceWorker?.getRegistrations().then((rs) => rs.forEach((r) => r.unregister()));
       return;
     }
