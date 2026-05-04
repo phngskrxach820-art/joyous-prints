@@ -6,7 +6,7 @@ import { ArrowLeft, CheckCircle2, Loader2, Sparkles, Check } from "lucide-react"
 import { CaptureFlow } from "@/components/CaptureFlow";
 import { LAYOUTS, renderLayout, renderLayoutD, type LayoutId } from "@/lib/composer";
 import { loadConfig } from "@/lib/admin-config";
-import { paymentSuccess } from "@/lib/audio";
+import { paymentSuccess, chime } from "@/lib/audio";
 import { FormatCard, FORMAT_META } from "@/components/FormatCard";
 import { ThemePicker } from "@/components/ThemePicker";
 // frame catalog accessed inside ThemePicker
@@ -81,7 +81,8 @@ function SessionPage() {
       .update({ review_type: reviewType, review_handle: reviewHandle || null })
       .eq("id", id)
       .then(() => {});
-    toast.success("ขอบคุณล่วงหน้าเลยนะ! ราคาพิเศษ 49.- 🎉");
+    chime();
+    toast.success("✅ แชร์ปุ๊บ ลดปั๊บ! ราคา " + PROMO_PRICE + ".- 🎉");
   }
 
   async function handleCaptured(blobs: Blob[]) {
@@ -326,7 +327,7 @@ function SessionPage() {
       {step === "capture" && (
         <CaptureFlow
           totalShots={LAYOUTS.find((l) => l.id === layout)?.needsCount ?? 4}
-          aspectRatio={layout === "A" ? 9 / 16 : 3 / 4}
+          aspectRatio={layout === "A" ? 16 / 9 : 3 / 4}
           onComplete={handleCaptured}
           onBack={backFromCapture}
         />
@@ -451,10 +452,11 @@ function SessionPage() {
           {!reviewerActive && promoLeft <= 0 && (
             <div className="mb-5 px-4 text-left">
               <div className="rounded-2xl border border-border bg-card p-4">
-                <p className="font-heading font-bold mb-3 text-center">รีวิวให้เราแลกส่วนลดได้เลย! 📱</p>
+                <p className="font-heading font-bold text-center">แชร์ปุ๊บ ลดปั๊บ! 🔥</p>
+                <p className="text-xs text-muted-foreground mb-3 text-center">ลดเหลือ {PROMO_PRICE}.- ทันที</p>
                 <label className="flex items-center gap-2 mb-2 cursor-pointer">
                   <input type="checkbox" checked={reviewStory} onChange={(e) => setReviewStory(e.target.checked)} />
-                  <span className="text-sm">แท็กร้านใน Story/Post</span>
+                  <span className="text-sm">โพสต์/Story แท็กร้านให้เรา</span>
                 </label>
                 <label className="flex items-center gap-2 mb-3 cursor-pointer">
                   <input type="checkbox" checked={reviewClip} onChange={(e) => setReviewClip(e.target.checked)} />
@@ -585,9 +587,17 @@ function SessionPage() {
             </div>
           </div>
 
-          <p className="text-center text-muted-foreground" style={{ fontSize: 12 }}>
+          <p className="text-center text-muted-foreground mb-6" style={{ fontSize: 12 }}>
             ⏰ ลิงก์ใช้ได้ 24 ชั่วโมง
           </p>
+
+          <Link
+            to="/"
+            style={{ width: "calc(100% - 32px)", marginLeft: 16, marginRight: 16 }}
+            className="inline-flex items-center justify-center h-14 rounded-full border-2 border-primary text-primary font-semibold text-lg hover:bg-primary/10 transition"
+          >
+            🏠 กลับหน้าแรก
+          </Link>
 
           {gifOutputUrl && <link rel="prefetch" href={gifOutputUrl} />}
         </section>

@@ -127,11 +127,11 @@ function Home() {
       <div className="flex items-center justify-center" style={{ height: "10vh" }}>
         {promoFull ? (
           <span className="inline-block px-4 py-2 rounded-full bg-muted text-muted-foreground text-sm">
-            โปรวันนี้เต็มแล้ว ราคาปกติ {NORMAL_PRICE}.-
+            โปรวันนี้เต็มแล้ว · ราคาปกติ {NORMAL_PRICE}.-
           </span>
         ) : (
           <span className="inline-block px-4 py-2 rounded-full bg-green-500/20 text-green-500 text-sm font-semibold animate-pulse-soft">
-            🔥 เหลืออีก {remaining}/{PROMO_LIMIT} สิทธิ์โปรวันนี้! ({PROMO_PRICE}.-)
+            🔥 เหลืออีก {remaining} สิทธิ์โปรวันนี้! ({PROMO_PRICE}.-)
           </span>
         )}
       </div>

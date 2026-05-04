@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import type { Frame, FormatId } from "@/lib/frames";
 import { framesForFormat } from "@/lib/frames";
-import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE } from "@/lib/promo";
+import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining } from "@/lib/promo";
 
 export type FormatMeta = {
   id: FormatId;
   title: string;
   shotsLabel: string;
   emoji: string;
+  popular?: boolean;
 };
 
 export const FORMAT_META: FormatMeta[] = [
-  { id: "A", title: "แบ่งให้เพื่อน 💑", shotsLabel: "ถ่าย 3 รูป ได้ 2 แถบ", emoji: "💑" },
+  { id: "A", title: "แบ่งให้เพื่อน 💑 (2x6)", shotsLabel: "ถ่าย 4 รูป ได้ 2 แถบเหมือนกัน", emoji: "💑", popular: true },
   { id: "B", title: "เต็มแผ่น 4x6 🖼️", shotsLabel: "ถ่าย 4 รูป เต็มแผ่น", emoji: "🖼️" },
 ];
 
@@ -96,13 +97,26 @@ export function FormatCard({
         )}
       </div>
 
-      {/* Bottom 35%: info */}
+      {/* Popular badge */}
+      {meta.popular && (
+        <span className="absolute top-2 right-2 z-10 px-2 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shadow">
+          ⭐ ยอดนิยม
+        </span>
+      )}
+
+      {/* Bottom: info */}
       <div className="p-4">
         <h3 className="font-heading font-bold text-lg mb-1">{meta.title}</h3>
         <p className="text-xs text-muted-foreground mb-2">{meta.shotsLabel}</p>
         <div className="flex items-baseline gap-2">
-          <span className="text-xs text-muted-foreground line-through">ปกติ {NORMAL_PRICE}.-</span>
-          <span className="text-base font-bold text-primary">โปร {PROMO_PRICE}.-</span>
+          {typeof window !== "undefined" && promoRemaining() > 0 ? (
+            <>
+              <span className="text-xs text-muted-foreground line-through">ปกติ {NORMAL_PRICE}.-</span>
+              <span className="text-base font-bold text-primary">โปร {PROMO_PRICE}.-</span>
+            </>
+          ) : (
+            <span className="text-base font-bold text-primary">{NORMAL_PRICE}.-</span>
+          )}
         </div>
         <p className="text-[11px] text-muted-foreground mt-1">+ ปริ้นท์ซ้ำ {REPRINT_PRICE}.-</p>
       </div>

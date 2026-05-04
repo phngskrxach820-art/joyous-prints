@@ -81,7 +81,46 @@ async function loadFrame(): Promise<HTMLImageElement | null> {
   return null;
 }
 
-/** Layout A — แบ่งให้เพื่อน — 1240x1844 portrait, 2 identical strips side by side, cut line in middle */
+type Slot = { x: number; y: number; w: number; h: number; shape: "oval" | "rect" };
+
+const STRIP_SLOTS: Slot[] = [
+  { x: 80,  y: 252,  w: 440, h: 237, shape: "oval" },
+  { x: 80,  y: 535,  w: 440, h: 259, shape: "rect" },
+  { x: 80,  y: 840,  w: 440, h: 237, shape: "oval" },
+  { x: 80,  y: 1124, w: 439, h: 259, shape: "rect" },
+  { x: 700, y: 253,  w: 440, h: 237, shape: "oval" },
+  { x: 700, y: 536,  w: 439, h: 259, shape: "rect" },
+  { x: 700, y: 842,  w: 440, h: 236, shape: "oval" },
+  { x: 700, y: 1125, w: 439, h: 259, shape: "rect" },
+];
+
+async function loadStripFrame(): Promise<HTMLImageElement | null> {
+  try {
+    return await loadImg("/frames/frame_strip_default.png");
+  } catch {
+    return null;
+  }
+}
+
+function drawSlotShape(ctx: CanvasRenderingContext2D, slot: Slot) {
+  ctx.beginPath();
+  if (slot.shape === "oval") {
+    const cx = slot.x + slot.w / 2;
+    const cy = slot.y + slot.h / 2;
+    ctx.ellipse(cx, cy, slot.w / 2, slot.h / 2, 0, 0, Math.PI * 2);
+  } else {
+    const r = 12;
+    const { x, y, w, h } = slot;
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+}
+
+/** Layout A — 2x6 strip with booth1 frame, 8 slots (4 photos x 2 columns) */
 export async function renderLayoutA(photos: string[], filter: string = "none"): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1240;
@@ -93,74 +132,31 @@ export async function renderLayoutA(photos: string[], filter: string = "none"): 
   ctx.fillRect(0, 0, 1240, 1844);
 
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
-  const frame = await loadFrame();
+  const frame = await loadStripFrame();
 
-  // Photo area inside each strip — leaves room for header logo + bottom badge
-  const HEADER_H = 220;
-  const FOOTER_H = 180;
-  const photoTop = HEADER_H;
-  const photoBottom = 1844 - FOOTER_H;
-  const photoArea = photoBottom - photoTop;
-  const slotGap = 12;
-  const slotH = (photoArea - slotGap * 3) / 4;
+  // 2. Draw photos into slots (left: 1-4, right: 1-4)
+  STRIP_SLOTS.forEach((slot, i) => {
+    const photo = imgs[i % 4];
+    ctx.save();
+    drawSlotShape(ctx, slot);
+    ctx.clip();
+    ctx.filter = filter || "none";
+    // object-fit cover
+    const ratio = Math.max(slot.w / photo.width, slot.h / photo.height);
+    const nw = photo.width * ratio;
+    const nh = photo.height * ratio;
+    const ox = slot.x + (slot.w - nw) / 2;
+    const oy = slot.y + (slot.h - nh) / 2;
+    ctx.drawImage(photo, ox, oy, nw, nh);
+    ctx.restore();
+  });
 
-  function drawStripPhotos(xOffset: number, stripW: number) {
-    for (let i = 0; i < 4; i++) {
-      const y = photoTop + i * (slotH + slotGap);
-      drawCoverFiltered(ctx, imgs[i % imgs.length], xOffset + 20, y, stripW - 40, slotH, filter);
-    }
-  }
-
-  // 2 + 3. Photos for both strips
-  drawStripPhotos(0, 600);
-  drawStripPhotos(640, 600);
-
-  // Branded fallback header/footer if no frame uploaded
-  if (!frame) {
-    for (const xOffset of [0, 640]) {
-      const stripW = 600;
-      ctx.fillStyle = "rgba(20,30,70,0.95)";
-      ctx.fillRect(xOffset + 20, 30, stripW - 40, HEADER_H - 50);
-      ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 26px 'Noto Sans Thai', sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("PHOTOBOOTH BY HENG", xOffset + stripW / 2, 30 + (HEADER_H - 50) / 2 - 18);
-      ctx.font = "bold 22px 'Noto Sans Thai', sans-serif";
-      ctx.fillText("เฮงที่ชอบพกกล้องมาวิทยาลัย", xOffset + stripW / 2, 30 + (HEADER_H - 50) / 2 + 16);
-      ctx.fillStyle = "rgba(20,30,70,0.9)";
-      ctx.fillRect(xOffset + 20, 1844 - FOOTER_H + 30, stripW - 40, FOOTER_H - 60);
-      ctx.fillStyle = "#FFFFFF";
-      ctx.font = "500 18px 'Noto Sans Thai', sans-serif";
-      ctx.fillText("HENG'S PHOTO BOOTH · IG: HENGSPHOTO", xOffset + stripW / 2, 1844 - FOOTER_H / 2);
-    }
-  }
-
-  // 4. Cut line
-  ctx.save();
-  ctx.setLineDash([10, 8]);
-  ctx.strokeStyle = "#AAAAAA";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(620, 0);
-  ctx.lineTo(620, 1844);
-  ctx.stroke();
-  ctx.restore();
-
-  // 5. Frame LAST, on top of photos (transparent PNG reveals photos underneath)
+  // 3. Draw frame PNG on top
   if (frame) {
-    ctx.drawImage(frame, 0, 0, 600, 1844);
-    ctx.drawImage(frame, 640, 0, 600, 1844);
+    ctx.drawImage(frame, 0, 0, 1240, 1844);
   }
 
-  // 6. Scissors icon at top of cut line
-  ctx.font = "20px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  ctx.fillStyle = "rgba(80,80,80,0.95)";
-  ctx.fillText("✂️", 620, 8);
-
-  return canvasToBlob(canvas);
+  return canvasToBlob(canvas, "image/jpeg", 1.0);
 }
 
 /** Layout B — เต็มแผ่น 4x6 — 1844x1240 landscape, 4 portrait photos in a row */
@@ -279,6 +275,6 @@ export async function renderLayout(layout: LayoutId, photos: string[], filter: s
 }
 
 export const LAYOUTS = [
-  { id: "A" as const, label: "แบ่งให้เพื่อน 💑 (2x6)", emoji: "💑", desc: "ถ่าย 3 รูป ได้ 2 แถบเหมือนกันบนกระดาษ 4x6 แบ่งกับเพื่อนได้เลย", needsCount: 3 },
+  { id: "A" as const, label: "แบ่งให้เพื่อน 💑 (2x6)", emoji: "💑", desc: "ถ่าย 4 รูป ได้ 2 แถบเหมือนกันบนกระดาษ 4x6 แบ่งกับเพื่อนได้เลย", needsCount: 4 },
   { id: "B" as const, label: "เต็มแผ่น 4x6 🖼️", emoji: "🖼️", desc: "ถ่าย 4 รูป เต็มแผ่น 4x6", recommended: true, needsCount: 4 },
 ];
