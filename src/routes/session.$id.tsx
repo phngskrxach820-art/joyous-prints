@@ -115,29 +115,15 @@ function SessionPage() {
     }
   }
 
-  // Background: render+upload BOTH the JPEG collage and the GIF in parallel.
+  // Background: render the JPEG collage and the GIF, then upload to the LOCAL LAN server.
   async function backgroundRender(l: LayoutId, urls: string[], filterCss: string) {
     const photoTask = (async () => {
       const blob = await renderLayout(l, urls, filterCss);
-      const path = `${id}/output-photo.jpg`;
-      const { error } = await supabase.storage.from("photos").upload(path, blob, {
-        contentType: "image/jpeg",
-        upsert: true,
-      });
-      if (error) throw error;
-      const { data } = supabase.storage.from("photos").getPublicUrl(path);
-      return data.publicUrl;
+      return uploadToLan(id, "photo", blob);
     })();
     const gifTask = (async () => {
       const blob = await renderLayoutD(urls, filterCss);
-      const path = `${id}/output-gif.gif`;
-      const { error } = await supabase.storage.from("photos").upload(path, blob, {
-        contentType: "image/gif",
-        upsert: true,
-      });
-      if (error) throw error;
-      const { data } = supabase.storage.from("photos").getPublicUrl(path);
-      return data.publicUrl;
+      return uploadToLan(id, "gif", blob);
     })();
     return Promise.all([photoTask, gifTask]);
   }
