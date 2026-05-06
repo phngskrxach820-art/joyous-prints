@@ -4,8 +4,6 @@ import PhotoboothOverlay, {
   FULL_DESIGNS,
   STRIP_DESIGNS,
   DESIGN_META,
-  FILTERS,
-  FILTER_LABELS,
   type DesignId,
   type FilterKey,
 } from "@/components/PhotoboothOverlay";
@@ -21,16 +19,13 @@ type Props = {
   onPick: (result: ThemePickResult) => void;
 };
 
-const FILTER_ORDER = Object.keys(FILTERS) as FilterKey[];
-
 export function ThemePicker({ onBack, onPick }: Props) {
   const [designId, setDesignId] = useState<DesignId>(STRIP_DESIGNS[0]);
-  const [filter, setFilter] = useState<FilterKey>("none");
 
   const layout: "A" | "B" = DESIGN_META[designId].format === "strip" ? "A" : "B";
 
-  function renderCard(id: DesignId, isStrip: boolean) {
-    const m = DESIGN_META[id];
+  function renderCard(id: DesignId) {
+    const meta = DESIGN_META[id];
     const active = designId === id;
     return (
       <button
@@ -40,16 +35,20 @@ export function ThemePicker({ onBack, onPick }: Props) {
           active ? "border-primary scale-[1.02] shadow-lg" : "border-border hover:border-primary/60"
         }`}
       >
-        <div className={isStrip ? "aspect-[2/3]" : "aspect-[3/2]"}>
-          <PhotoboothOverlay design={id} filter={filter}>
-            <div
-              className="w-full h-full"
-              style={{ background: `linear-gradient(135deg, ${DESIGN_META[id].bgColor}, ${DESIGN_META[id].accentColor})` }}
-            />
-          </PhotoboothOverlay>
+        <div className="w-full flex items-center justify-center p-3 bg-muted/30">
+          <div className="w-full max-w-[180px]">
+            <PhotoboothOverlay design={id} filter="none">
+              <div
+                className="w-full h-full"
+                style={{
+                  background: `linear-gradient(135deg, ${meta.bgColor}, ${meta.accentColor})`,
+                }}
+              />
+            </PhotoboothOverlay>
+          </div>
         </div>
         <div className="p-3 text-sm font-semibold text-center">
-          {DESIGN_META[id].emoji} {DESIGN_META[id].labelThai}
+          {meta.emoji} {meta.labelThai}
         </div>
         {active && (
           <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow">
@@ -66,52 +65,30 @@ export function ThemePicker({ onBack, onPick }: Props) {
         onClick={onBack}
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
       >
-        <ArrowLeft className="h-4 w-4" /> เปลี่ยนใจ
+        <ArrowLeft className="h-4 w-4" /> กลับ
       </button>
       <h1 className="text-2xl md:text-3xl font-heading font-bold mb-4">เลือกธีมกรอบ 🎨</h1>
 
       <section className="mb-6">
-        <h2 className="text-lg font-heading font-bold mb-3">แบบแถบ 2x6 💑</h2>
+        <h2 className="text-lg font-heading font-bold mb-3">แบบแถบ 2x6 💑 (3 รูป)</h2>
         <div className="grid grid-cols-2 gap-3">
-          {STRIP_DESIGNS.map((id) => renderCard(id, true))}
+          {STRIP_DESIGNS.map((id) => renderCard(id))}
         </div>
       </section>
 
       <section className="mb-6">
-        <h2 className="text-lg font-heading font-bold mb-3">เต็มแผ่น 4x6 🖼️</h2>
+        <h2 className="text-lg font-heading font-bold mb-3">เต็มแผ่น 4x6 🖼️ (4 รูป)</h2>
         <div className="grid grid-cols-2 gap-3">
-          {FULL_DESIGNS.map((id) => renderCard(id, false))}
+          {FULL_DESIGNS.map((id) => renderCard(id))}
         </div>
       </section>
 
-      <section className="mb-6">
-        <h2 className="text-lg font-heading font-bold mb-3">เลือกโทนสีที่ชอบ 🎨</h2>
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
-          {FILTER_ORDER.map((key) => {
-            const active = filter === key;
-            return (
-              <button
-                key={key}
-                onClick={() => setFilter(key)}
-                className={`flex-shrink-0 px-4 h-11 rounded-full border-2 text-sm font-semibold transition-all ${
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card text-muted-foreground hover:border-primary/50"
-                }`}
-              >
-                {FILTER_LABELS[key]}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <div className="mt-auto pt-4">
+      <div className="mt-auto pt-4 sticky bottom-4">
         <button
-          onClick={() => onPick({ layout, designId, filter })}
-          className="w-full h-14 rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:scale-[1.01] transition"
+          onClick={() => onPick({ layout, designId, filter: "none" })}
+          className="w-full h-14 rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:scale-[1.01] transition shadow-xl"
         >
-          เลือกแล้ว ไปถ่ายเลย! →
+          ไปต่อ →
         </button>
       </div>
     </main>
