@@ -12,6 +12,7 @@ import { FilterPicker } from "@/components/FilterPicker";
 import { FILTERS, type DesignId, type FilterKey } from "@/components/PhotoboothOverlay";
 import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining, consumePromo } from "@/lib/promo";
 import QRCode from "qrcode";
+import { uploadToLan, getLanBaseUrl } from "@/lib/lan-server";
 
 export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
@@ -114,29 +115,15 @@ function SessionPage() {
     }
   }
 
-  // Background: render+upload BOTH the JPEG collage and the GIF in parallel.
+  // Background: render the JPEG collage and the GIF, then upload to the LOCAL LAN server.
   async function backgroundRender(l: LayoutId, urls: string[], filterCss: string) {
     const photoTask = (async () => {
       const blob = await renderLayout(l, urls, filterCss);
-      const path = `${id}/output-photo.jpg`;
-      const { error } = await supabase.storage.from("photos").upload(path, blob, {
-        contentType: "image/jpeg",
-        upsert: true,
-      });
-      if (error) throw error;
-      const { data } = supabase.storage.from("photos").getPublicUrl(path);
-      return data.publicUrl;
+      return uploadToLan(id, "photo", blob);
     })();
     const gifTask = (async () => {
       const blob = await renderLayoutD(urls, filterCss);
-      const path = `${id}/output-gif.gif`;
-      const { error } = await supabase.storage.from("photos").upload(path, blob, {
-        contentType: "image/gif",
-        upsert: true,
-      });
-      if (error) throw error;
-      const { data } = supabase.storage.from("photos").getPublicUrl(path);
-      return data.publicUrl;
+      return uploadToLan(id, "gif", blob);
     })();
     return Promise.all([photoTask, gifTask]);
   }
@@ -167,10 +154,10 @@ function SessionPage() {
       setGifOutputUrl(gifUrl);
       await supabase.from("sessions").update({ output_url: photoUrl }).eq("id", id);
 
-      const origin = window.location.origin;
+      const lanBase = await getLanBaseUrl();
       const [pq, gq] = await Promise.all([
-        QRCode.toDataURL(`${origin}/d/${id}/photo`, { margin: 1, width: 360, errorCorrectionLevel: "H" }),
-        QRCode.toDataURL(`${origin}/d/${id}/gif`, { margin: 1, width: 360, errorCorrectionLevel: "H" }),
+        QRCode.toDataURL(`${lanBase}/d/${id}/photo`, { margin: 1, width: 360, errorCorrectionLevel: "H" }),
+        QRCode.toDataURL(`${lanBase}/d/${id}/gif`, { margin: 1, width: 360, errorCorrectionLevel: "H" }),
       ]);
       setPhotoQr(pq);
       setGifQr(gq);
