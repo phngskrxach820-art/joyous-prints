@@ -254,15 +254,6 @@ function SessionPage() {
   }
 
   async function batchPrint(canvas: HTMLCanvasElement, copies: number) {
-    for (let i = 0; i < copies; i++) {
-      if (i > 0) await new Promise((r) => setTimeout(r, 4000));
-      setPrintStatus(copies > 1 ? `🖨️ กำลังพิมพ์แผ่นที่ ${i + 1}...` : "🖨️ กำลังพิมพ์...");
-      printCanvas(canvas);
-    }
-    setPrintStatus(copies > 1 ? `✅ พิมพ์ครบ ${copies} แผ่นแล้ว!` : "✅ สั่งพิมพ์แล้ว!");
-  }
-
-  async function batchPrint(canvas: HTMLCanvasElement, copies: number) {
     setPrinter(printCanvas);
     setPrintStatus(copies > 1 ? `🖨️ เพิ่มเข้าคิว ${copies} แผ่น...` : "🖨️ เพิ่มเข้าคิวพิมพ์...");
     enqueuePrint(canvas, id, copies, layout);
@@ -275,16 +266,6 @@ function SessionPage() {
       setPrinter(printCanvas);
       enqueuePrint(canvas, id, 1, layout);
       setTimeout(markPrintFinished, 3000);
-    } catch (e) {
-      console.error(e);
-      toast.error("เปิดหน้าปริ้นท์ไม่ได้");
-      setIsPrinting(false);
-    }
-  }
-        }
-      }
-      // safety fallback
-      setTimeout(markPrintFinished, 12000);
     } catch (e) {
       console.error(e);
       toast.error("เปิดหน้าปริ้นท์ไม่ได้");
