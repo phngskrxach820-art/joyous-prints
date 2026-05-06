@@ -19,10 +19,15 @@ export function ThemePicker({ format, onBack, onPick }: Props) {
   const [frames, setFrames] = useState<Frame[]>([]);
   const [selected, setSelected] = useState<string>("__placeholder__");
 
+  const designIds: readonly DesignId[] =
+    format === "A" ? STRIP_DESIGNS : FULL_DESIGNS;
+  const [designId, setDesignId] = useState<DesignId>(designIds[0]);
+
   useEffect(() => {
     const f = framesForFormat(format);
     setFrames(f);
     setSelected(f[0]?.id ?? "__placeholder__");
+    setDesignId(designIds[0]);
   }, [format]);
 
   const meta = FORMAT_META.find((m) => m.id === format);
