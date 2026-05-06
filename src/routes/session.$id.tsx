@@ -91,7 +91,7 @@ function SessionPage() {
       }
       setPhotoUrls(urls);
       await supabase.from("sessions").update({ photos: urls }).eq("id", id);
-      setStep("filter");
+      setStep("payment");
     } catch (e) {
       console.error(e);
       toast.error("อัปโหลดรูปไม่สำเร็จ");
