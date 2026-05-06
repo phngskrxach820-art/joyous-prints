@@ -162,10 +162,11 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
     );
   }
 
-  // Crop guide width as % of video width (assumes 16:9 source)
-  const sourceRatio = 16 / 9;
-  const cropPctW = Math.min(1, aspectRatio / sourceRatio); // fraction of width
-  const sidePct = ((1 - cropPctW) / 2) * 100;
+  // Container matches target capture ratio; no theme overlay during shoot.
+  const isPortrait = aspectRatio < 1;
+  const containerStyle: React.CSSProperties = isPortrait
+    ? { aspectRatio: `${aspectRatio}`, maxHeight: "70vh", width: "auto" }
+    : { aspectRatio: `${aspectRatio}`, width: "100%" };
 
   return (
     <div className="relative min-h-[80vh] flex flex-col items-center">
