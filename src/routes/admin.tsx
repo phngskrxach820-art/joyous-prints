@@ -38,6 +38,13 @@ function Admin() {
   const [detectedIp, setDetectedIp] = useState<string>("");
   const [serverUp, setServerUp] = useState<boolean | null>(null);
   const tapTimesRef = useRef<number[]>([]);
+  const [pq, setPq] = useState(() => getPrintQueueState());
+
+  useEffect(() => {
+    const unsub = subscribePrintQueue(() => setPq(getPrintQueueState()));
+    const t = setInterval(() => setPq(getPrintQueueState()), 2000);
+    return () => { unsub(); clearInterval(t); };
+  }, []);
 
   useEffect(() => {
     setCfg(loadConfig());
