@@ -4,7 +4,7 @@ import PhotoboothOverlay, {
   FULL_DESIGNS,
   STRIP_DESIGNS,
   DESIGN_META,
-  FILTER_ORDER,
+  FILTERS,
   FILTER_LABELS,
   type DesignId,
   type FilterKey,
@@ -21,20 +21,13 @@ type Props = {
   onPick: (result: ThemePickResult) => void;
 };
 
-const PLACEHOLDER_GRADIENTS: Record<DesignId, string> = {
-  "strip-classic": "linear-gradient(135deg,#fde68a,#f59e0b)",
-  "strip-y2k-pink": "linear-gradient(135deg,#fbcfe8,#ec4899)",
-  "strip-pastel": "linear-gradient(135deg,#dbeafe,#a78bfa)",
-  "full-classic": "linear-gradient(135deg,#fef3c7,#fb923c)",
-  "full-y2k-pink": "linear-gradient(135deg,#fce7f3,#f472b6)",
-  "full-pastel": "linear-gradient(135deg,#e0e7ff,#c4b5fd)",
-};
+const FILTER_ORDER = Object.keys(FILTERS) as FilterKey[];
 
 export function ThemePicker({ onBack, onPick }: Props) {
   const [designId, setDesignId] = useState<DesignId>(STRIP_DESIGNS[0]);
   const [filter, setFilter] = useState<FilterKey>("none");
 
-  const layout: "A" | "B" = (STRIP_DESIGNS as readonly string[]).includes(designId) ? "A" : "B";
+  const layout: "A" | "B" = DESIGN_META[designId].format === "strip" ? "A" : "B";
 
   function renderCard(id: DesignId, isStrip: boolean) {
     const m = DESIGN_META[id];
@@ -51,12 +44,12 @@ export function ThemePicker({ onBack, onPick }: Props) {
           <PhotoboothOverlay design={id} filter={filter}>
             <div
               className="w-full h-full"
-              style={{ background: PLACEHOLDER_GRADIENTS[id] }}
+              style={{ background: `linear-gradient(135deg, ${DESIGN_META[id].bgColor}, ${DESIGN_META[id].accentColor})` }}
             />
           </PhotoboothOverlay>
         </div>
         <div className="p-3 text-sm font-semibold text-center">
-          {m.emoji} {m.label}
+          {DESIGN_META[id].emoji} {DESIGN_META[id].labelThai}
         </div>
         {active && (
           <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow">
