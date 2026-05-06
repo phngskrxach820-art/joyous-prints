@@ -133,17 +133,16 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
       setTimeout(() => {
         if (newBlobs.length >= totalShots) {
           setPhase("done");
-          setTimeout(() => onComplete(newBlobs), 1500);
+          setTimeout(() => onComplete(newBlobs), 800);
         } else {
           setShotIndex((i) => i + 1);
-          // Brief "get ready" pause, then auto-continue
           setPhase("pause");
           setTimeout(() => {
             setPhase("countdown");
             setCount(3);
-          }, 1000);
+          }, 600);
         }
-      }, 1500);
+      }, 800);
     }, 180);
   }
 
