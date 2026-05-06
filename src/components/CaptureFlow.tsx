@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera as CamIcon, ArrowLeft } from "lucide-react";
 import { tick, shutter } from "@/lib/audio";
-import PhotoboothOverlay, { type DesignId, type FilterKey } from "@/components/PhotoboothOverlay";
+import type { DesignId, FilterKey } from "@/components/PhotoboothOverlay";
 
 type Props = {
   onComplete: (photos: Blob[]) => void;
