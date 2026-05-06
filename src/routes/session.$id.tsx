@@ -2,14 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Loader2, Sparkles, Check } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { CaptureFlow } from "@/components/CaptureFlow";
 import { LAYOUTS, renderLayout, renderLayoutD, type LayoutId } from "@/lib/composer";
 import { loadConfig } from "@/lib/admin-config";
 import { paymentSuccess, chime } from "@/lib/audio";
-import { FormatCard, FORMAT_META } from "@/components/FormatCard";
 import { ThemePicker } from "@/components/ThemePicker";
-// frame catalog accessed inside ThemePicker
+import { FILTERS, type DesignId, type FilterKey } from "@/components/PhotoboothOverlay";
 import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining, consumePromo } from "@/lib/promo";
 import QRCode from "qrcode";
 
@@ -17,25 +16,16 @@ export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
 });
 
-type Step = "format" | "theme" | "capture" | "uploading" | "filter" | "payment" | "rendering" | "delivery";
-
-type FilterId = "none" | "film" | "soft" | "bw" | "vintage";
-const FILTERS: Record<FilterId, { label: string; css: string }> = {
-  none:    { label: "ปกติ",       css: "none" },
-  film:    { label: "ฟิล์ม 🎞️",   css: "sepia(30%) contrast(95%) brightness(105%) saturate(85%)" },
-  soft:    { label: "นุ่มๆ 🌸",   css: "brightness(110%) saturate(80%) contrast(90%) hue-rotate(5deg)" },
-  bw:      { label: "ขาวดำ 🖤",   css: "grayscale(100%) contrast(105%)" },
-  vintage: { label: "วินเทจ 🟤",  css: "sepia(50%) brightness(95%) contrast(90%) saturate(75%)" },
-};
-const FILTER_ORDER: FilterId[] = ["none", "film", "soft", "bw", "vintage"];
+type Step = "theme" | "capture" | "uploading" | "payment" | "rendering" | "delivery";
 
 function SessionPage() {
   const { id } = Route.useParams();
-  // navigation handled via Link
-  const [step, setStep] = useState<Step>("format");
+  const [step, setStep] = useState<Step>("theme");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [layout, setLayout] = useState<LayoutId>("B");
-  const [filter, setFilter] = useState<FilterId>("none");
+  const [layout, setLayout] = useState<LayoutId>("A");
+  const [designId, setDesignId] = useState<DesignId>("strip-classic");
+  const [filter, setFilter] = useState<FilterKey>("none");
+
   const [confirming, setConfirming] = useState(false);
   const [paid, setPaid] = useState(false);
   const [photoOutputUrl, setPhotoOutputUrl] = useState<string>("");
