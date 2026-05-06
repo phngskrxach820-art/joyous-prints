@@ -99,22 +99,17 @@ function SessionPage() {
     }
   }
 
-  async function chooseLayout(l: LayoutId) {
-    setLayout(l);
-    await supabase.from("sessions").update({ layout: l }).eq("id", id);
-    setStep(l === "A" || l === "B" ? "theme" : "capture");
+  async function handleThemePick(result: { layout: "A" | "B"; designId: DesignId; filter: FilterKey }) {
+    setLayout(result.layout);
+    setDesignId(result.designId);
+    setFilter(result.filter);
+    await supabase.from("sessions").update({ layout: result.layout }).eq("id", id);
+    setStep("capture");
   }
 
   function backFromCapture() {
     if (confirm("เริ่มถ่ายใหม่เลยนะ?")) {
-      setStep("format");
-    }
-  }
-
-  function backFromFilter() {
-    if (confirm("ถ่ายใหม่เลยนะ?")) {
-      setPhotoUrls([]);
-      setStep("capture");
+      setStep("theme");
     }
   }
 
