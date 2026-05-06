@@ -145,7 +145,7 @@ function SessionPage() {
     await supabase.from("sessions").update({ payment_status: "checking" }).eq("id", id);
 
     // Kick off render in background while the 10s "verifying" UX runs.
-    const renderPromise = backgroundRender(layout, photoUrls, FILTERS[filter].css).catch((e) => {
+    const renderPromise = backgroundRender(layout, photoUrls, FILTERS[filter]).catch((e) => {
       console.error("render failed", e);
       return null;
     });
