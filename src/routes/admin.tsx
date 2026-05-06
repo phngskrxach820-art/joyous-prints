@@ -40,7 +40,34 @@ function Admin() {
 
   useEffect(() => {
     setCfg(loadConfig());
+    setLan(loadLan());
   }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    detectLocalIp().then((ip) => setDetectedIp(ip || ""));
+    pingLanServer().then(setServerUp);
+  }, [authed]);
+
+  async function refreshLan() {
+    setServerUp(null);
+    setDetectedIp("");
+    const ip = await detectLocalIp();
+    setDetectedIp(ip || "");
+    const ok = await pingLanServer();
+    setServerUp(ok);
+  }
+
+  function updateLan<K extends keyof LanConfig>(key: K, val: LanConfig[K]) {
+    const n = { ...lan, [key]: val };
+    setLan(n);
+    saveLan(n);
+  }
+
+  async function testLanUrl() {
+    const base = await getLanBaseUrl();
+    window.open(`${base}/health`, "_blank");
+  }
 
   async function fetchSessions() {
     const { data } = await supabase
