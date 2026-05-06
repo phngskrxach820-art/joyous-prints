@@ -33,6 +33,9 @@ function Admin() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [showReviews, setShowReviews] = useState(false);
   const [reviews, setReviews] = useState<ReviewSession[]>([]);
+  const [lan, setLan] = useState<LanConfig>({ manualIp: "", port: 3000 });
+  const [detectedIp, setDetectedIp] = useState<string>("");
+  const [serverUp, setServerUp] = useState<boolean | null>(null);
   const tapTimesRef = useRef<number[]>([]);
 
   useEffect(() => {
