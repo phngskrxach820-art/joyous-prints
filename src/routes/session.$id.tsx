@@ -154,10 +154,10 @@ function SessionPage() {
       setGifOutputUrl(gifUrl);
       await supabase.from("sessions").update({ output_url: photoUrl }).eq("id", id);
 
-      const origin = window.location.origin;
+      const lanBase = await getLanBaseUrl();
       const [pq, gq] = await Promise.all([
-        QRCode.toDataURL(`${origin}/d/${id}/photo`, { margin: 1, width: 360, errorCorrectionLevel: "H" }),
-        QRCode.toDataURL(`${origin}/d/${id}/gif`, { margin: 1, width: 360, errorCorrectionLevel: "H" }),
+        QRCode.toDataURL(`${lanBase}/d/${id}/photo`, { margin: 1, width: 360, errorCorrectionLevel: "H" }),
+        QRCode.toDataURL(`${lanBase}/d/${id}/gif`, { margin: 1, width: 360, errorCorrectionLevel: "H" }),
       ]);
       setPhotoQr(pq);
       setGifQr(gq);
