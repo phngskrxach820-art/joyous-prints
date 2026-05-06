@@ -199,20 +199,18 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
         </div>
       )}
 
-      <div className="relative w-full max-w-4xl mx-auto aspect-video rounded-3xl overflow-hidden bg-black mt-16 shadow-2xl">
-        <PhotoboothOverlay design={design} filter={filter}>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-            style={{ transform: "scaleX(-1)" }}
-          />
-        </PhotoboothOverlay>
-        <div className="absolute inset-y-0 left-0 bg-black/60 pointer-events-none" style={{ width: `${sidePct}%` }} />
-        <div className="absolute inset-y-0 right-0 bg-black/60 pointer-events-none" style={{ width: `${sidePct}%` }} />
-        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-2 border-white/70 rounded-xl pointer-events-none" style={{ width: `${cropPctW * 100}%` }} />
+      <div
+        className="relative mx-auto rounded-3xl overflow-hidden bg-black mt-16 shadow-2xl border-2 border-dashed border-white/70"
+        style={containerStyle}
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover"
+          style={{ transform: "scaleX(-1)" }}
+        />
 
         {phase === "countdown" && count > 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
