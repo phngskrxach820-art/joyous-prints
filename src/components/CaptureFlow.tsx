@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera as CamIcon, ArrowLeft } from "lucide-react";
 import { tick, shutter } from "@/lib/audio";
-import PhotoboothOverlay, { type DesignId, type FilterKey } from "@/components/PhotoboothOverlay";
+import type { DesignId, FilterKey } from "@/components/PhotoboothOverlay";
 
 type Props = {
   onComplete: (photos: Blob[]) => void;
@@ -133,17 +133,16 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
       setTimeout(() => {
         if (newBlobs.length >= totalShots) {
           setPhase("done");
-          setTimeout(() => onComplete(newBlobs), 1500);
+          setTimeout(() => onComplete(newBlobs), 800);
         } else {
           setShotIndex((i) => i + 1);
-          // Brief "get ready" pause, then auto-continue
           setPhase("pause");
           setTimeout(() => {
             setPhase("countdown");
             setCount(3);
-          }, 1000);
+          }, 600);
         }
-      }, 1500);
+      }, 800);
     }, 180);
   }
 
@@ -162,10 +161,11 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
     );
   }
 
-  // Crop guide width as % of video width (assumes 16:9 source)
-  const sourceRatio = 16 / 9;
-  const cropPctW = Math.min(1, aspectRatio / sourceRatio); // fraction of width
-  const sidePct = ((1 - cropPctW) / 2) * 100;
+  // Container matches target capture ratio; no theme overlay during shoot.
+  const isPortrait = aspectRatio < 1;
+  const containerStyle: React.CSSProperties = isPortrait
+    ? { aspectRatio: `${aspectRatio}`, maxHeight: "70vh", width: "auto" }
+    : { aspectRatio: `${aspectRatio}`, width: "100%" };
 
   return (
     <div className="relative min-h-[80vh] flex flex-col items-center">
@@ -198,20 +198,18 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
         </div>
       )}
 
-      <div className="relative w-full max-w-4xl mx-auto aspect-video rounded-3xl overflow-hidden bg-black mt-16 shadow-2xl">
-        <PhotoboothOverlay design={design} filter={filter}>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-            style={{ transform: "scaleX(-1)" }}
-          />
-        </PhotoboothOverlay>
-        <div className="absolute inset-y-0 left-0 bg-black/60 pointer-events-none" style={{ width: `${sidePct}%` }} />
-        <div className="absolute inset-y-0 right-0 bg-black/60 pointer-events-none" style={{ width: `${sidePct}%` }} />
-        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-2 border-white/70 rounded-xl pointer-events-none" style={{ width: `${cropPctW * 100}%` }} />
+      <div
+        className="relative mx-auto rounded-3xl overflow-hidden bg-black mt-16 shadow-2xl border-2 border-dashed border-white/70"
+        style={containerStyle}
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover"
+          style={{ transform: "scaleX(-1)" }}
+        />
 
         {phase === "countdown" && count > 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
