@@ -325,7 +325,41 @@ function Admin() {
         </p>
       </section>
 
-      {/* Sessions */}
+      {/* Print queue */}
+      <section className="mb-8 p-6 rounded-3xl bg-card border border-border space-y-4">
+        <h2 className="font-heading font-bold text-xl">🖨️ Print Queue</h2>
+        <div className="flex items-center gap-4">
+          <span className="text-sm">คิวรอพิมพ์: <span className="font-bold text-primary">{pq.queueLength}</span> งาน</span>
+          {pq.isPrinting && (
+            <span className="inline-flex items-center gap-2 text-sm text-primary">
+              <span className="inline-block w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              กำลังพิมพ์...
+            </span>
+          )}
+          <button
+            onClick={() => { clearPrintQueue(); }}
+            className="ml-auto px-4 h-9 rounded-full border border-border text-sm font-semibold hover:bg-muted"
+          >
+            ล้างคิว
+          </button>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground mb-2">10 งานล่าสุด</div>
+          <div className="space-y-1">
+            {pq.log.length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีงานพิมพ์</p>}
+            {pq.log.map((l, i) => (
+              <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/40 text-xs">
+                <span className="font-mono text-muted-foreground">{l.sessionId.slice(0, 8)}</span>
+                <span>{l.layout ?? "-"}</span>
+                <span>×{l.copies}</span>
+                <span className="ml-auto text-muted-foreground">{new Date(l.at).toLocaleTimeString("th-TH")}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
       <section className="p-6 rounded-3xl bg-card border border-border">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-heading font-bold text-xl">📋 Sessions</h2>
