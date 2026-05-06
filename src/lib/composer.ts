@@ -77,14 +77,10 @@ async function loadFrame(format: "A" | "B" = "B"): Promise<HTMLImageElement | nu
 type Slot = { x: number; y: number; w: number; h: number; shape: "oval" | "rect" };
 
 const STRIP_SLOTS: Slot[] = [
-  { x: 80,  y: 252,  w: 440, h: 237, shape: "oval" },
-  { x: 80,  y: 535,  w: 440, h: 259, shape: "rect" },
-  { x: 80,  y: 840,  w: 440, h: 237, shape: "oval" },
-  { x: 80,  y: 1124, w: 439, h: 259, shape: "rect" },
-  { x: 700, y: 253,  w: 440, h: 237, shape: "oval" },
-  { x: 700, y: 536,  w: 439, h: 259, shape: "rect" },
-  { x: 700, y: 842,  w: 440, h: 236, shape: "oval" },
-  { x: 700, y: 1125, w: 439, h: 259, shape: "rect" },
+  // Strip is 600x1844, 3 slots stacked equally
+  { x: 40, y: 140,  w: 520, h: 490, shape: "rect" },
+  { x: 40, y: 660,  w: 520, h: 490, shape: "rect" },
+  { x: 40, y: 1180, w: 520, h: 490, shape: "rect" },
 ];
 
 async function loadStripFrame(): Promise<HTMLImageElement | null> {
@@ -130,28 +126,22 @@ export async function renderLayoutA(
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, 1240, 1844);
 
-  // 2. Load photos and frame
-  const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
+  // 2. Load 3 photos and frame
+  const imgs = await Promise.all(photos.slice(0, 3).map(loadImg));
   const frame = await loadStripFrame();
 
-  // 3. Slot definitions
+  // 3. 3 equal slots per strip; right strip offset by +640
   const LEFT_SLOTS: Slot[] = [
-    { x: 80, y: 252, w: 440, h: 237, shape: "oval" },
-    { x: 80, y: 535, w: 440, h: 259, shape: "rect" },
-    { x: 80, y: 840, w: 440, h: 237, shape: "oval" },
-    { x: 80, y: 1124, w: 439, h: 259, shape: "rect" },
+    { x: 40, y: 140,  w: 520, h: 490, shape: "rect" },
+    { x: 40, y: 660,  w: 520, h: 490, shape: "rect" },
+    { x: 40, y: 1180, w: 520, h: 490, shape: "rect" },
   ];
-  const RIGHT_SLOTS: Slot[] = [
-    { x: 700, y: 253, w: 440, h: 237, shape: "oval" },
-    { x: 700, y: 536, w: 439, h: 259, shape: "rect" },
-    { x: 700, y: 842, w: 440, h: 236, shape: "oval" },
-    { x: 700, y: 1125, w: 439, h: 259, shape: "rect" },
-  ];
+  const RIGHT_SLOTS: Slot[] = LEFT_SLOTS.map((s) => ({ ...s, x: s.x + 640 }));
 
-  // 4. Draw photos into slots
+  // 4. Draw photos into slots (3 per strip)
   const allSlots = [...LEFT_SLOTS, ...RIGHT_SLOTS];
   allSlots.forEach((slot, i) => {
-    const img = imgs[i % 4];
+    const img = imgs[i % 3];
     if (!img) return;
     ctx.save();
     drawSlotShape(ctx, slot);
@@ -271,7 +261,7 @@ export async function renderLayoutD(photos: string[], filter: string = "none"): 
     cx.textAlign = "right";
     cx.textBaseline = "bottom";
     cx.fillText(WATERMARK, 790, 590);
-    gif.addFrame(c, { delay: 150 });
+    gif.addFrame(c, { delay: 700 });
   }
   return new Promise((res, rej) => {
     gif.on("finished", (blob: Blob) => res(blob));
