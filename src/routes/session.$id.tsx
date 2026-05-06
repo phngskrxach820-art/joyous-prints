@@ -453,6 +453,12 @@ function SessionPage() {
             </p>
           )}
 
+          {layout === "A" && (
+            <p className="mb-6 text-base font-semibold text-amber-600 dark:text-amber-400">
+              ตัดตามเส้นประตรงกลางได้เลย ✂️
+            </p>
+          )}
+
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="p-4 rounded-3xl border border-border bg-card text-center">
               <p className="font-heading font-bold mb-3">📸 เซฟรูปนิ่ง</p>
