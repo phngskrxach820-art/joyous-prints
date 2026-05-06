@@ -8,6 +8,7 @@ import { LAYOUTS, renderLayout, renderLayoutD, type LayoutId } from "@/lib/compo
 import { loadConfig } from "@/lib/admin-config";
 import { paymentSuccess, chime } from "@/lib/audio";
 import { ThemePicker } from "@/components/ThemePicker";
+import { FilterPicker } from "@/components/FilterPicker";
 import { FILTERS, type DesignId, type FilterKey } from "@/components/PhotoboothOverlay";
 import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining, consumePromo } from "@/lib/promo";
 import QRCode from "qrcode";
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
 });
 
-type Step = "theme" | "capture" | "uploading" | "payment" | "rendering" | "delivery";
+type Step = "theme" | "capture" | "uploading" | "filter" | "payment" | "rendering" | "delivery";
 
 function SessionPage() {
   const { id } = Route.useParams();
@@ -91,7 +92,7 @@ function SessionPage() {
       }
       setPhotoUrls(urls);
       await supabase.from("sessions").update({ photos: urls }).eq("id", id);
-      setStep("payment");
+      setStep("filter");
     } catch (e) {
       console.error(e);
       toast.error("อัปโหลดรูปไม่สำเร็จ");
