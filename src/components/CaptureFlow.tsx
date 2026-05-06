@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera as CamIcon, ArrowLeft } from "lucide-react";
 import { tick, shutter } from "@/lib/audio";
+import PhotoboothOverlay, { type DesignId, type FilterKey } from "@/components/PhotoboothOverlay";
 
 type Props = {
   onComplete: (photos: Blob[]) => void;
@@ -8,9 +9,11 @@ type Props = {
   onBack?: () => void;
   /** target ratio width/height. Format A strip => 9/16, Format B => 3/4 */
   aspectRatio?: number;
+  design?: DesignId;
+  filter?: FilterKey;
 };
 
-export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 3 / 4 }: Props) {
+export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 3 / 4, design = "strip-classic", filter = "none" }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [phase, setPhase] = useState<"init" | "ready" | "pause" | "countdown" | "flash" | "review" | "done" | "error">("init");
@@ -196,14 +199,16 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
       )}
 
       <div className="relative w-full max-w-4xl mx-auto aspect-video rounded-3xl overflow-hidden bg-black mt-16 shadow-2xl">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover"
-          style={{ transform: "scaleX(-1)" }}
-        />
+        <PhotoboothOverlay design={design} filter={filter}>
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover"
+            style={{ transform: "scaleX(-1)" }}
+          />
+        </PhotoboothOverlay>
         <div className="absolute inset-y-0 left-0 bg-black/60 pointer-events-none" style={{ width: `${sidePct}%` }} />
         <div className="absolute inset-y-0 right-0 bg-black/60 pointer-events-none" style={{ width: `${sidePct}%` }} />
         <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-2 border-white/70 rounded-xl pointer-events-none" style={{ width: `${cropPctW * 100}%` }} />

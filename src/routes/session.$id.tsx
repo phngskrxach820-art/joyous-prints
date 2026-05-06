@@ -2,14 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Loader2, Sparkles, Check } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { CaptureFlow } from "@/components/CaptureFlow";
 import { LAYOUTS, renderLayout, renderLayoutD, type LayoutId } from "@/lib/composer";
 import { loadConfig } from "@/lib/admin-config";
 import { paymentSuccess, chime } from "@/lib/audio";
-import { FormatCard, FORMAT_META } from "@/components/FormatCard";
 import { ThemePicker } from "@/components/ThemePicker";
-// frame catalog accessed inside ThemePicker
+import { FILTERS, type DesignId, type FilterKey } from "@/components/PhotoboothOverlay";
 import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining, consumePromo } from "@/lib/promo";
 import QRCode from "qrcode";
 
@@ -17,25 +16,16 @@ export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
 });
 
-type Step = "format" | "theme" | "capture" | "uploading" | "filter" | "payment" | "rendering" | "delivery";
-
-type FilterId = "none" | "film" | "soft" | "bw" | "vintage";
-const FILTERS: Record<FilterId, { label: string; css: string }> = {
-  none:    { label: "ปกติ",       css: "none" },
-  film:    { label: "ฟิล์ม 🎞️",   css: "sepia(30%) contrast(95%) brightness(105%) saturate(85%)" },
-  soft:    { label: "นุ่มๆ 🌸",   css: "brightness(110%) saturate(80%) contrast(90%) hue-rotate(5deg)" },
-  bw:      { label: "ขาวดำ 🖤",   css: "grayscale(100%) contrast(105%)" },
-  vintage: { label: "วินเทจ 🟤",  css: "sepia(50%) brightness(95%) contrast(90%) saturate(75%)" },
-};
-const FILTER_ORDER: FilterId[] = ["none", "film", "soft", "bw", "vintage"];
+type Step = "theme" | "capture" | "uploading" | "payment" | "rendering" | "delivery";
 
 function SessionPage() {
   const { id } = Route.useParams();
-  // navigation handled via Link
-  const [step, setStep] = useState<Step>("format");
+  const [step, setStep] = useState<Step>("theme");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [layout, setLayout] = useState<LayoutId>("B");
-  const [filter, setFilter] = useState<FilterId>("none");
+  const [layout, setLayout] = useState<LayoutId>("A");
+  const [designId, setDesignId] = useState<DesignId>("strip-classic");
+  const [filter, setFilter] = useState<FilterKey>("none");
+
   const [confirming, setConfirming] = useState(false);
   const [paid, setPaid] = useState(false);
   const [photoOutputUrl, setPhotoOutputUrl] = useState<string>("");
@@ -101,7 +91,7 @@ function SessionPage() {
       }
       setPhotoUrls(urls);
       await supabase.from("sessions").update({ photos: urls }).eq("id", id);
-      setStep("filter");
+      setStep("payment");
     } catch (e) {
       console.error(e);
       toast.error("อัปโหลดรูปไม่สำเร็จ");
@@ -109,22 +99,17 @@ function SessionPage() {
     }
   }
 
-  async function chooseLayout(l: LayoutId) {
-    setLayout(l);
-    await supabase.from("sessions").update({ layout: l }).eq("id", id);
-    setStep(l === "A" || l === "B" ? "theme" : "capture");
+  async function handleThemePick(result: { layout: "A" | "B"; designId: DesignId; filter: FilterKey }) {
+    setLayout(result.layout);
+    setDesignId(result.designId);
+    setFilter(result.filter);
+    await supabase.from("sessions").update({ layout: result.layout }).eq("id", id);
+    setStep("capture");
   }
 
   function backFromCapture() {
     if (confirm("เริ่มถ่ายใหม่เลยนะ?")) {
-      setStep("format");
-    }
-  }
-
-  function backFromFilter() {
-    if (confirm("ถ่ายใหม่เลยนะ?")) {
-      setPhotoUrls([]);
-      setStep("capture");
+      setStep("theme");
     }
   }
 
@@ -160,7 +145,7 @@ function SessionPage() {
     await supabase.from("sessions").update({ payment_status: "checking" }).eq("id", id);
 
     // Kick off render in background while the 10s "verifying" UX runs.
-    const renderPromise = backgroundRender(layout, photoUrls, FILTERS[filter].css).catch((e) => {
+    const renderPromise = backgroundRender(layout, photoUrls, FILTERS[filter]).catch((e) => {
       console.error("render failed", e);
       return null;
     });
@@ -328,77 +313,11 @@ function SessionPage() {
         <CaptureFlow
           totalShots={LAYOUTS.find((l) => l.id === layout)?.needsCount ?? 4}
           aspectRatio={layout === "A" ? 16 / 9 : 3 / 4}
+          design={designId}
+          filter={filter}
           onComplete={handleCaptured}
           onBack={backFromCapture}
         />
-      )}
-
-      {step === "filter" && (
-        <section className="animate-fade-in">
-          <button
-            onClick={backFromFilter}
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
-          >
-            <ArrowLeft className="h-4 w-4" /> ถ่ายใหม่
-          </button>
-          <h2 className="text-3xl md:text-4xl font-heading font-bold mb-2">เลือกโทนสีที่ชอบ 🎨</h2>
-          <p className="text-muted-foreground mb-6">ฟิลเตอร์จะถูกใส่ในทุกรูปเลย</p>
-
-          <div className="flex gap-3 overflow-x-auto pb-3 mb-6 -mx-4 px-4">
-            {FILTER_ORDER.map((fid) => {
-              const f = FILTERS[fid];
-              const selected = filter === fid;
-              return (
-                <button
-                  key={fid}
-                  onClick={() => setFilter(fid)}
-                  className={`relative flex-shrink-0 rounded-2xl border-2 overflow-hidden transition-all ${
-                    selected ? "border-primary scale-[1.05]" : "border-border hover:border-primary/50"
-                  }`}
-                  style={{ width: 80 }}
-                >
-                  <div
-                    className="w-[80px] h-[100px] bg-muted overflow-hidden"
-                    style={{ filter: f.css }}
-                  >
-                    {photoUrls[0] && (
-                      <img src={photoUrls[0]} alt={f.label} className="w-full h-full object-cover" />
-                    )}
-                  </div>
-                  <div className="px-1 py-1.5 text-[11px] font-semibold text-center bg-card">
-                    {f.label}
-                  </div>
-                  {selected && (
-                    <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                      <Check className="h-3 w-3" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Live preview grid — bigger portrait thumbs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-            {photoUrls.map((u, i) => (
-              <div key={i} className="aspect-[3/4] bg-muted rounded-xl overflow-hidden shadow-md">
-                <img
-                  src={u}
-                  alt={`รูปที่ ${i + 1}`}
-                  className="w-full h-full object-cover transition-[filter] duration-200"
-                  style={{ filter: FILTERS[filter].css }}
-                />
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={() => setStep("payment")}
-            className="w-full h-14 rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:scale-[1.01] transition"
-          >
-            ใช้ฟิลเตอร์นี้เลย →
-          </button>
-        </section>
       )}
 
       {step === "uploading" && (
@@ -408,33 +327,10 @@ function SessionPage() {
         </div>
       )}
 
-      {step === "format" && (
-        <section className="animate-fade-in flex flex-col" style={{ minHeight: "calc(100vh - 96px)" }}>
-          <h2 className="text-2xl md:text-3xl font-heading font-bold mb-1">อยากได้แบบไหน?</h2>
-          <p className="text-sm text-muted-foreground mb-1">เลือกฟอร์แมตสำหรับปริ้นท์</p>
-          <p className="text-xs text-muted-foreground mb-4">✨ ทุกแบบจะได้ GIF เคลื่อนไหวแถมไปด้วยฟรี!</p>
-
-          <div className="grid sm:grid-cols-2 gap-3 flex-1 items-stretch">
-            {FORMAT_META.map((m) => (
-              <div key={m.id} style={{ maxHeight: "42vh" }} className="flex">
-                <div className="w-full">
-                  <FormatCard
-                    meta={m}
-                    selected={layout === m.id}
-                    onSelect={(id) => chooseLayout(id)}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {step === "theme" && (layout === "A" || layout === "B") && (
+      {step === "theme" && (
         <ThemePicker
-          format={layout}
-          onBack={() => setStep("format")}
-          onPick={() => setStep("capture")}
+          onBack={() => { window.history.back(); }}
+          onPick={handleThemePick}
         />
       )}
 

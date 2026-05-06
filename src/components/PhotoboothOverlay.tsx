@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 export const STRIP_DESIGNS = [
   "strip-classic",
@@ -16,12 +16,7 @@ export type StripDesignId = (typeof STRIP_DESIGNS)[number];
 export type FullDesignId = (typeof FULL_DESIGNS)[number];
 export type DesignId = StripDesignId | FullDesignId;
 
-export type FilterId = "none" | "softSkin" | "bw" | "warm" | "cool";
-
-export const DESIGN_META: Record<
-  DesignId,
-  { label: string; emoji: string }
-> = {
+export const DESIGN_META: Record<DesignId, { label: string; emoji: string }> = {
   "strip-classic": { label: "Classic Strip", emoji: "🎞️" },
   "strip-y2k-pink": { label: "Y2K Pink Strip", emoji: "💖" },
   "strip-pastel": { label: "Pastel Strip", emoji: "🌸" },
@@ -30,44 +25,58 @@ export const DESIGN_META: Record<
   "full-pastel": { label: "Pastel Full", emoji: "🌷" },
 };
 
-const FILTER_CSS: Record<FilterId, string> = {
+/** Filter keys + CSS values shared by preview, live camera, and final render. */
+export const FILTERS = {
   none: "none",
-  softSkin: "saturate(1.05) contrast(0.98) brightness(1.04) blur(0.3px)",
+  softSkin: "saturate(1.05) contrast(0.98) brightness(1.04)",
   bw: "grayscale(1) contrast(1.05)",
-  warm: "saturate(1.1) hue-rotate(-8deg) brightness(1.03)",
-  cool: "saturate(1.05) hue-rotate(8deg) brightness(1.02)",
+  warm: "saturate(1.1) sepia(0.15) brightness(1.03)",
+  cool: "saturate(1.05) hue-rotate(-12deg) brightness(1.02)",
+} as const;
+
+export type FilterKey = keyof typeof FILTERS;
+/** @deprecated use FilterKey */
+export type FilterId = FilterKey;
+
+export const FILTER_LABELS: Record<FilterKey, string> = {
+  none: "ปกติ",
+  softSkin: "ผิวนุ่ม 🌸",
+  bw: "ขาวดำ 🖤",
+  warm: "อบอุ่น 🔆",
+  cool: "เย็นตา ❄️",
 };
+
+export const FILTER_ORDER: FilterKey[] = ["none", "softSkin", "bw", "warm", "cool"];
 
 type Props = {
   design: DesignId;
-  filter?: FilterId;
+  filter?: FilterKey;
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
 };
 
 /**
- * Empty Photobooth overlay shell.
- * Wraps a <video> (or any child) and applies a CSS filter.
- * Visual overlays (stickers, frames, gradients) can be added per-design later.
+ * Photobooth overlay shell. Wraps a child (video / image / placeholder)
+ * and applies a CSS filter. Per-design SVG art layers can be added later.
  */
 export default function PhotoboothOverlay({
   design,
   filter = "none",
   children,
   className = "",
+  style,
 }: Props) {
   return (
     <div
       data-design={design}
+      style={style}
       className={`relative w-full h-full overflow-hidden ${className}`}
     >
-      <div
-        className="w-full h-full"
-        style={{ filter: FILTER_CSS[filter] }}
-      >
+      <div className="w-full h-full" style={{ filter: FILTERS[filter] }}>
         {children}
       </div>
-      {/* TODO: per-design overlay layers go here */}
+      {/* TODO: per-design SVG overlay layers */}
     </div>
   );
 }
