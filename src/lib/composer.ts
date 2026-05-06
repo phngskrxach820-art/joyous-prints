@@ -290,8 +290,8 @@ export const LAYOUTS = [
     id: "A" as const,
     label: "แบ่งให้เพื่อน 💑 (2x6)",
     emoji: "💑",
-    desc: "ถ่าย 4 รูป ได้ 2 แถบเหมือนกัน แบ่งกับเพื่อนได้เลย",
-    needsCount: 4,
+    desc: "ถ่าย 3 รูป ได้ 2 แถบเหมือนกัน แบ่งกับเพื่อนได้เลย",
+    needsCount: 3,
     popular: true,
   },
   {
