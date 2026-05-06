@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Lock, RefreshCw } from "lucide-react";
 import { loadConfig, saveConfig, defaults, THEMES, applyTheme, type AdminConfig } from "@/lib/admin-config";
 import { toast } from "sonner";
+import { loadLan, saveLan, detectLocalIp, pingLanServer, getLanBaseUrl, type LanConfig } from "@/lib/lan-server";
 
 export const Route = createFileRoute("/admin")({
   component: Admin,
