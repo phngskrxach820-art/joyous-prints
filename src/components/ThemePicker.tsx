@@ -2,6 +2,12 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { framesForFormat, type Frame, type FormatId } from "@/lib/frames";
 import { FORMAT_META } from "@/components/FormatCard";
+import {
+  FULL_DESIGNS,
+  STRIP_DESIGNS,
+  DESIGN_META,
+  type DesignId,
+} from "@/components/PhotoboothOverlay";
 
 type Props = {
   format: FormatId;
