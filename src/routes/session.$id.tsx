@@ -13,6 +13,7 @@ import { FILTERS, type DesignId, type FilterKey } from "@/components/PhotoboothO
 import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining, consumePromo } from "@/lib/promo";
 import QRCode from "qrcode";
 import { uploadToLan, getLanBaseUrl } from "@/lib/lan-server";
+import { enqueuePrint, setPrinter } from "@/lib/print-queue";
 
 export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
@@ -253,27 +254,18 @@ function SessionPage() {
   }
 
   async function batchPrint(canvas: HTMLCanvasElement, copies: number) {
-    for (let i = 0; i < copies; i++) {
-      if (i > 0) await new Promise((r) => setTimeout(r, 4000));
-      setPrintStatus(copies > 1 ? `🖨️ กำลังพิมพ์แผ่นที่ ${i + 1}...` : "🖨️ กำลังพิมพ์...");
-      printCanvas(canvas);
-    }
-    setPrintStatus(copies > 1 ? `✅ พิมพ์ครบ ${copies} แผ่นแล้ว!` : "✅ สั่งพิมพ์แล้ว!");
+    setPrinter(printCanvas);
+    setPrintStatus(copies > 1 ? `🖨️ เพิ่มเข้าคิว ${copies} แผ่น...` : "🖨️ เพิ่มเข้าคิวพิมพ์...");
+    enqueuePrint(canvas, id, copies, layout);
+    setPrintStatus(copies > 1 ? `✅ ส่งเข้าคิวแล้ว ${copies} แผ่น!` : "✅ ส่งเข้าคิวแล้ว!");
   }
 
   async function doPrintOnce() {
     try {
       const canvas = await urlToCanvas(photoOutputUrl);
-      const win = printCanvas(canvas);
-      if (win) {
-        try {
-          win.addEventListener("afterprint", markPrintFinished);
-        } catch {
-          // cross-origin; rely on safety timer
-        }
-      }
-      // safety fallback
-      setTimeout(markPrintFinished, 12000);
+      setPrinter(printCanvas);
+      enqueuePrint(canvas, id, 1, layout);
+      setTimeout(markPrintFinished, 3000);
     } catch (e) {
       console.error(e);
       toast.error("เปิดหน้าปริ้นท์ไม่ได้");
@@ -458,6 +450,12 @@ function SessionPage() {
           {(isPrinting || printStatus) && (
             <p className={`mb-6 text-base font-semibold text-primary ${isPrinting ? "animate-pulse" : ""}`}>
               {printStatus || "🖨️ กำลังพิมพ์..."}
+            </p>
+          )}
+
+          {layout === "A" && (
+            <p className="mb-6 text-base font-semibold text-amber-600 dark:text-amber-400">
+              ตัดตามเส้นประตรงกลางได้เลย ✂️
             </p>
           )}
 
