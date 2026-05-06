@@ -255,6 +255,68 @@ function Admin() {
         </Field>
       </section>
 
+      {/* Local LAN server */}
+      <section className="mb-8 p-6 rounded-3xl bg-card border border-border space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-heading font-bold text-xl">📡 Local Server (LAN)</h2>
+          <button onClick={refreshLan} className="p-2 rounded-full hover:bg-muted" title="Refresh">
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/30 p-3 text-sm">
+          ⚠️ ลูกค้าต้องเชื่อม WiFi เดียวกับ MacBook ถึงจะสแกน QR แล้วโหลดรูปได้
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4 text-sm">
+          <div className="p-3 rounded-xl bg-muted/40">
+            <div className="text-xs text-muted-foreground mb-1">LAN IP ที่ตรวจเจอ</div>
+            <div className="font-mono">{detectedIp || "—"}</div>
+          </div>
+          <div className="p-3 rounded-xl bg-muted/40">
+            <div className="text-xs text-muted-foreground mb-1">สถานะเซิร์ฟเวอร์</div>
+            <div className="flex items-center gap-2">
+              <span
+                className={`inline-block w-2.5 h-2.5 rounded-full ${
+                  serverUp === true ? "bg-green-500" : serverUp === false ? "bg-red-500" : "bg-yellow-500"
+                }`}
+              />
+              <span>{serverUp === true ? "Running" : serverUp === false ? "Stopped / unreachable" : "Checking..."}</span>
+            </div>
+          </div>
+        </div>
+
+        <Field label="Override IP (เว้นว่าง = ใช้ที่ตรวจเจออัตโนมัติ)">
+          <input
+            value={lan.manualIp}
+            onChange={(e) => updateLan("manualIp", e.target.value)}
+            placeholder="เช่น 192.168.1.42"
+            className="input-field"
+          />
+        </Field>
+        <Field label="Port">
+          <input
+            type="number"
+            value={lan.port}
+            onChange={(e) => updateLan("port", Number(e.target.value) || 3000)}
+            className="input-field"
+          />
+        </Field>
+
+        <div className="flex gap-2">
+          <button onClick={testLanUrl} className="px-4 h-10 rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+            ทดสอบเปิด URL
+          </button>
+          <button onClick={refreshLan} className="px-4 h-10 rounded-full border border-border text-sm font-semibold">
+            ตรวจใหม่
+          </button>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          รัน server บน MacBook: <code className="bg-muted px-1.5 py-0.5 rounded">cd server &amp;&amp; npm install &amp;&amp; npm start</code>
+        </p>
+      </section>
+
       {/* Sessions */}
       <section className="p-6 rounded-3xl bg-card border border-border">
         <div className="flex items-center justify-between mb-4">
