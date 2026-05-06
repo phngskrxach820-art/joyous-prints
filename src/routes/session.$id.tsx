@@ -23,7 +23,7 @@ function SessionPage() {
   const [step, setStep] = useState<Step>("theme");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [layout, setLayout] = useState<LayoutId>("A");
-  const [designId, setDesignId] = useState<DesignId>("strip-classic");
+  const [designId, setDesignId] = useState<DesignId>("strip-korean-mono");
   const [filter, setFilter] = useState<FilterKey>("none");
 
   const [confirming, setConfirming] = useState(false);

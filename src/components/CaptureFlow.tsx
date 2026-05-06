@@ -13,7 +13,7 @@ type Props = {
   filter?: FilterKey;
 };
 
-export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 3 / 4, design = "strip-classic", filter = "none" }: Props) {
+export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 3 / 4, design = "strip-korean-mono", filter = "none" }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [phase, setPhase] = useState<"init" | "ready" | "pause" | "countdown" | "flash" | "review" | "done" | "error">("init");
