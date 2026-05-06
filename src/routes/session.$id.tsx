@@ -335,6 +335,15 @@ function SessionPage() {
         />
       )}
 
+      {step === "filter" && (
+        <FilterPicker
+          photos={photoUrls}
+          initialFilter={filter}
+          onNext={(f) => { setFilter(f); setStep("payment"); }}
+          onBack={() => setStep("capture")}
+        />
+      )}
+
       {step === "payment" && (
         <section className="animate-fade-in max-w-md mx-auto text-center">
           <h2 className="text-3xl font-heading font-bold mb-2">สแกน QR จ่ายได้เลย</h2>
