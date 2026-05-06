@@ -262,15 +262,25 @@ function SessionPage() {
     setPrintStatus(copies > 1 ? `✅ พิมพ์ครบ ${copies} แผ่นแล้ว!` : "✅ สั่งพิมพ์แล้ว!");
   }
 
+  async function batchPrint(canvas: HTMLCanvasElement, copies: number) {
+    setPrinter(printCanvas);
+    setPrintStatus(copies > 1 ? `🖨️ เพิ่มเข้าคิว ${copies} แผ่น...` : "🖨️ เพิ่มเข้าคิวพิมพ์...");
+    enqueuePrint(canvas, id, copies, layout);
+    setPrintStatus(copies > 1 ? `✅ ส่งเข้าคิวแล้ว ${copies} แผ่น!` : "✅ ส่งเข้าคิวแล้ว!");
+  }
+
   async function doPrintOnce() {
     try {
       const canvas = await urlToCanvas(photoOutputUrl);
-      const win = printCanvas(canvas);
-      if (win) {
-        try {
-          win.addEventListener("afterprint", markPrintFinished);
-        } catch {
-          // cross-origin; rely on safety timer
+      setPrinter(printCanvas);
+      enqueuePrint(canvas, id, 1, layout);
+      setTimeout(markPrintFinished, 3000);
+    } catch (e) {
+      console.error(e);
+      toast.error("เปิดหน้าปริ้นท์ไม่ได้");
+      setIsPrinting(false);
+    }
+  }
         }
       }
       // safety fallback
