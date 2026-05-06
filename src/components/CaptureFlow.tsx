@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera as CamIcon, ArrowLeft } from "lucide-react";
 import { tick, shutter } from "@/lib/audio";
+import PhotoboothOverlay, { type DesignId, type FilterKey } from "@/components/PhotoboothOverlay";
 
 type Props = {
   onComplete: (photos: Blob[]) => void;
@@ -8,9 +9,11 @@ type Props = {
   onBack?: () => void;
   /** target ratio width/height. Format A strip => 9/16, Format B => 3/4 */
   aspectRatio?: number;
+  design?: DesignId;
+  filter?: FilterKey;
 };
 
-export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 3 / 4 }: Props) {
+export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 3 / 4, design = "strip-classic", filter = "none" }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [phase, setPhase] = useState<"init" | "ready" | "pause" | "countdown" | "flash" | "review" | "done" | "error">("init");
