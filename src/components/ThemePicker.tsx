@@ -2,7 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { framesForFormat, type Frame, type FormatId } from "@/lib/frames";
 import { FORMAT_META } from "@/components/FormatCard";
-import {
+import PhotoboothOverlay, {
   FULL_DESIGNS,
   STRIP_DESIGNS,
   DESIGN_META,
@@ -66,6 +66,26 @@ export function ThemePicker({ format, onBack, onPick }: Props) {
             </button>
           );
         })}
+      </div>
+
+      {/* Live preview of selected design */}
+      <div className="mb-4 rounded-3xl border-2 border-border bg-card p-3">
+        <p className="text-xs text-muted-foreground mb-2 text-center">
+          ตัวอย่างดีไซน์: {DESIGN_META[designId].emoji} {DESIGN_META[designId].label}
+        </p>
+        <div
+          className={`mx-auto overflow-hidden rounded-2xl bg-muted ${
+            format === "A" ? "aspect-[2/3] max-w-[180px]" : "aspect-[3/2] max-w-[320px]"
+          }`}
+        >
+          <PhotoboothOverlay design={designId} filter="softSkin">
+            <img
+              src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=80"
+              alt="ตัวอย่าง"
+              className="w-full h-full object-cover"
+            />
+          </PhotoboothOverlay>
+        </div>
       </div>
 
       <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 flex-1">
