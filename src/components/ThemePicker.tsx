@@ -2,7 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { framesForFormat, type Frame, type FormatId } from "@/lib/frames";
 import { FORMAT_META } from "@/components/FormatCard";
-import {
+import PhotoboothOverlay, {
   FULL_DESIGNS,
   STRIP_DESIGNS,
   DESIGN_META,
