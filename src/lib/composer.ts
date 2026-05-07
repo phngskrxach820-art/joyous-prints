@@ -213,6 +213,6 @@ export async function renderLayout(layout: LayoutId, photos: string[], filter: s
 }
 
 export const LAYOUTS = [
-  { id: "A" as const, label: "แบบแถบ 2x6 💑", emoji: "💑", desc: "ถ่าย 3 รูป ได้ 2 แถบตัดแบ่งได้", needsCount: 3, popular: true },
+  { id: "A" as const, label: "แบบแถบ 2x6 💑", emoji: "💑", desc: "ถ่าย 4 รูป ได้ 2 แถบตัดแบ่งได้", needsCount: 4, popular: true },
   { id: "B" as const, label: "เต็มแผ่น 4x6 🖼️", emoji: "🖼️", desc: "ถ่าย 4 รูป เต็มแผ่น", recommended: true, needsCount: 4 },
 ];
