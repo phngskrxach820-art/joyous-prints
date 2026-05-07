@@ -120,7 +120,10 @@ function SessionPage() {
   }
 
   async function backgroundRender(l: LayoutId, urls: string[], filterCss: string): Promise<Blob | null> {
-    const tryRender = (timeoutMs: number) => withTimeout(renderLayout(l, urls, filterCss), timeoutMs);
+    const tryRender = (timeoutMs: number) => {
+      const effectiveDesignId = designId ?? (l === "A" ? "strip-bunny-cute" : "full-korean-cafe");
+      return withTimeout(renderLayout(l, urls, filterCss, effectiveDesignId), timeoutMs);
+    };
     try {
       return await tryRender(15000);
     } catch (e) {
