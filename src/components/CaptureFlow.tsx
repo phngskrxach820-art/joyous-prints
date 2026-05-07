@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Camera as CamIcon, ArrowLeft } from "lucide-react";
 import { tick, shutter } from "@/lib/audio";
 import type { DesignId, FilterKey } from "@/components/PhotoboothOverlay";
-import { frameUrlForDesign, frameExists } from "@/lib/design-frames";
+
 
 type Props = {
   onComplete: (photos: Blob[]) => void;
