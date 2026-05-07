@@ -70,9 +70,6 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
-    fetch("/frames/frame_strip_default.png")
-      .then((r) => console.log("Frame A status:", r.status))
-      .catch((e) => console.error("Frame A failed:", e));
     fetch("/frames/frame_full_default.png")
       .then((r) => console.log("Frame B status:", r.status))
       .catch((e) => console.error("Frame B failed:", e));
