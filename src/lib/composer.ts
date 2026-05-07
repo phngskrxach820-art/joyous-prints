@@ -187,12 +187,7 @@ export async function renderLayoutD(photos: string[], filter: string = "none"): 
     const cx = c.getContext("2d")!;
     cx.fillStyle = "#000";
     cx.fillRect(0, 0, 800, 600);
-    drawCoverFiltered(cx, img, 0, 0, 800, 600, filter);
-    cx.font = "500 18px 'Noto Sans Thai', sans-serif";
-    cx.fillStyle = "rgba(255,255,255,0.7)";
-    cx.textAlign = "right";
-    cx.textBaseline = "bottom";
-    cx.fillText(WATERMARK, 790, 590);
+    drawSlotWithFilter(cx, img, { x: 0, y: 0, w: 800, h: 600 }, filter);
     gif.addFrame(c, { delay: 700 });
   }
   return new Promise((res, rej) => {
