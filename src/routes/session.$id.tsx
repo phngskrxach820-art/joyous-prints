@@ -439,7 +439,8 @@ function SessionPage() {
       {step === "rendering" && (
         <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
           <Sparkles className="h-12 w-12 animate-pulse-soft text-primary" />
-          <p className="text-lg">กำลังจัดรูปสวยๆ ให้นะ...</p>
+          <p className="text-lg">กำลังสั่งปริ้น...รอสักครู่</p>
+          <p className="text-sm text-muted-foreground">เกือบเสร็จแล้ว ✨</p>
         </div>
       )}
 
@@ -462,28 +463,16 @@ function SessionPage() {
             </p>
           )}
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="p-4 rounded-3xl border border-border bg-card text-center">
-              <p className="font-heading font-bold mb-3">📸 เซฟรูปนิ่ง</p>
-              {photoQr && (
-                <div className="bg-white p-2 rounded-xl inline-block">
-                  <img src={photoQr} alt="QR เซฟรูป" className="w-[200px] h-[200px] block" />
-                </div>
-              )}
-            </div>
-            <div className="p-4 rounded-3xl border border-border bg-card text-center">
-              <p className="font-heading font-bold mb-3">✨ เซฟ GIF</p>
-              {gifQr && (
-                <div className="bg-white p-2 rounded-xl inline-block">
-                  <img src={gifQr} alt="QR เซฟ GIF" className="w-[200px] h-[200px] block" />
-                </div>
-              )}
-            </div>
-          </div>
-
-          <p className="text-center text-muted-foreground mb-6" style={{ fontSize: 12 }}>
-            ⏰ ลิงก์ใช้ได้ 24 ชั่วโมง
-          </p>
+          {!hasPrintedOnce && photoOutputBlob && (
+            <button
+              onClick={handlePrintClick}
+              disabled={isPrinting}
+              style={{ width: "calc(100% - 32px)", marginLeft: 16, marginRight: 16 }}
+              className="h-14 rounded-full bg-primary text-primary-foreground font-semibold text-lg shadow-lg hover:scale-[1.02] transition mb-4 disabled:opacity-60"
+            >
+              🖨️ สั่งพิมพ์
+            </button>
+          )}
 
           <Link
             to="/"
@@ -492,8 +481,6 @@ function SessionPage() {
           >
             🏠 กลับหน้าแรก
           </Link>
-
-          {gifOutputUrl && <link rel="prefetch" href={gifOutputUrl} />}
         </section>
       )}
     </main>
