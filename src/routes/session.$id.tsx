@@ -321,6 +321,7 @@ function SessionPage() {
         <FilterPicker
           photos={photoUrls}
           initialFilter={filter}
+          layout={layout}
           onNext={(f) => { setFilter(f); setStep("payment"); }}
           onBack={() => setStep("capture")}
         />
