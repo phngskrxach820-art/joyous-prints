@@ -5,15 +5,17 @@ import { FILTERS, FILTER_LABELS, type FilterKey } from "@/components/PhotoboothO
 type Props = {
   photos: string[];
   initialFilter?: FilterKey;
+  layout?: "A" | "B";
   onNext: (filter: FilterKey) => void;
   onBack?: () => void;
 };
 
 const FILTER_ORDER: FilterKey[] = ["none", "softSkin", "vintage", "blackWhite"];
 
-export function FilterPicker({ photos, initialFilter = "none", onNext, onBack }: Props) {
+export function FilterPicker({ photos, initialFilter = "none", layout = "A", onNext, onBack }: Props) {
   const [selected, setSelected] = useState<FilterKey>(initialFilter);
   const hero = photos[0];
+  const aspectRatio = layout === "A" ? "9 / 16" : "3 / 4";
 
   return (
     <main className="min-h-screen px-4 py-6 max-w-3xl mx-auto animate-fade-in flex flex-col">
@@ -35,12 +37,19 @@ export function FilterPicker({ photos, initialFilter = "none", onNext, onBack }:
       </div>
 
       {hero && (
-        <div className="rounded-3xl overflow-hidden bg-black shadow-2xl mb-4 aspect-video">
+        <div
+          className="rounded-3xl overflow-hidden bg-black shadow-2xl mb-4 mx-auto"
+          style={{ aspectRatio, width: "100%", maxHeight: "55vh" }}
+        >
           <img
             src={hero}
             alt="preview"
-            className="w-full h-full object-cover"
-            style={{ filter: FILTERS[selected] }}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              filter: FILTERS[selected],
+            }}
           />
         </div>
       )}
@@ -60,15 +69,18 @@ export function FilterPicker({ photos, initialFilter = "none", onNext, onBack }:
                   ? "border-[3px] border-primary scale-105 shadow-lg"
                   : "border-2 border-border hover:border-primary/50"
               }`}
-              style={{ width: 110 }}
             >
-              <div className="w-full aspect-square bg-black relative">
+              <div className="bg-black relative" style={{ aspectRatio, height: 90 }}>
                 {hero && (
                   <img
                     src={hero}
                     alt={key}
-                    className="w-full h-full object-cover"
-                    style={{ filter: FILTERS[key] }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      filter: FILTERS[key],
+                    }}
                   />
                 )}
                 {active && (
@@ -90,12 +102,20 @@ export function FilterPicker({ photos, initialFilter = "none", onNext, onBack }:
           <p className="text-xs text-muted-foreground mb-2">รูปทั้งหมด</p>
           <div className="grid grid-cols-4 gap-2">
             {photos.map((p, i) => (
-              <div key={i} className="aspect-square rounded-xl overflow-hidden bg-black">
+              <div
+                key={i}
+                className="rounded-xl overflow-hidden bg-black"
+                style={{ aspectRatio }}
+              >
                 <img
                   src={p}
                   alt={`shot ${i + 1}`}
-                  className="w-full h-full object-cover"
-                  style={{ filter: FILTERS[selected] }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    filter: FILTERS[selected],
+                  }}
                 />
               </div>
             ))}
