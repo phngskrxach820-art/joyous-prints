@@ -1,5 +1,5 @@
 import { ArrowLeft, Check } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PhotoboothOverlay, {
   FULL_DESIGNS,
   STRIP_DESIGNS,
@@ -7,6 +7,7 @@ import PhotoboothOverlay, {
   type DesignId,
   type FilterKey,
 } from "@/components/PhotoboothOverlay";
+import { frameUrlForDesign, frameExists } from "@/lib/design-frames";
 
 export type ThemePickResult = {
   layout: "A" | "B";
@@ -37,14 +38,7 @@ export function ThemePicker({ onBack, onPick }: Props) {
       >
         <div className="w-full flex items-center justify-center p-3 bg-muted/30">
           <div className="w-full max-w-[180px]">
-            <PhotoboothOverlay design={id} filter="none">
-              <div
-                className="w-full h-full"
-                style={{
-                  background: `linear-gradient(135deg, ${meta.bgColor}, ${meta.accentColor})`,
-                }}
-              />
-            </PhotoboothOverlay>
+            <FramePreview id={id} />
           </div>
         </div>
         <div className="p-3 text-sm font-semibold text-center">
@@ -92,5 +86,38 @@ export function ThemePicker({ onBack, onPick }: Props) {
         </button>
       </div>
     </main>
+  );
+}
+
+function FramePreview({ id }: { id: DesignId }) {
+  const meta = DESIGN_META[id];
+  const aspect = meta.format === "full" ? 1240 / 1844 : 600 / 1844;
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const { primary, fallback } = frameUrlForDesign(id);
+    (async () => {
+      const ok = await frameExists(primary);
+      if (cancelled) return;
+      setUrl(ok ? primary : fallback);
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
+
+  return (
+    <div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: aspect }}>
+      <div
+        className="absolute inset-0"
+        style={{ background: `linear-gradient(135deg, ${meta.bgColor}, ${meta.accentColor})` }}
+      />
+      {url ? (
+        <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+      ) : (
+        <PhotoboothOverlay design={id} filter="none">
+          <div className="w-full h-full" />
+        </PhotoboothOverlay>
+      )}
+    </div>
   );
 }

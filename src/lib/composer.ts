@@ -1,5 +1,7 @@
 // Photo composition for layouts A/B/C/D
 import GIF from "gif.js";
+import { frameUrlForDesign } from "@/lib/design-frames";
+import type { DesignId } from "@/components/PhotoboothOverlay";
 
 export type LayoutId = "A" | "B" | "C" | "D";
 
@@ -61,9 +63,10 @@ function watermark(ctx: CanvasRenderingContext2D, x: number, y: number, align: C
   ctx.restore();
 }
 
-async function loadFrame(format: "A" | "B" = "B"): Promise<HTMLImageElement | null> {
-  const file = format === "A" ? "frame_strip_default.png" : "frame_full_default.png";
-  const candidates = [`/frames/${file}`, "/frames/frame_default.png", "/frame_default.png"];
+async function loadFrameForDesign(format: "A" | "B", designId?: string): Promise<HTMLImageElement | null> {
+  const { primary, fallback } = frameUrlForDesign(designId as DesignId | undefined);
+  const defaultFile = format === "A" ? "/frames/frame_strip_default.png" : "/frames/frame_full_default.png";
+  const candidates = [primary, fallback, defaultFile];
   for (const src of candidates) {
     try {
       return await loadImg(src);
@@ -75,22 +78,6 @@ async function loadFrame(format: "A" | "B" = "B"): Promise<HTMLImageElement | nu
 }
 
 type Slot = { x: number; y: number; w: number; h: number; shape: "oval" | "rect" };
-
-const STRIP_SLOTS: Slot[] = [
-  // Strip is 600x1844, 3 slots stacked equally
-  { x: 40, y: 140,  w: 520, h: 490, shape: "rect" },
-  { x: 40, y: 660,  w: 520, h: 490, shape: "rect" },
-  { x: 40, y: 1180, w: 520, h: 490, shape: "rect" },
-];
-
-async function loadStripFrame(): Promise<HTMLImageElement | null> {
-  try {
-    return await loadImg("/frames/frame_strip_default.png");
-  } catch (e) {
-    console.error("Failed to load strip frame:", e);
-    return null;
-  }
-}
 
 function drawSlotShape(ctx: CanvasRenderingContext2D, slot: Slot) {
   ctx.beginPath();
@@ -114,7 +101,7 @@ function drawSlotShape(ctx: CanvasRenderingContext2D, slot: Slot) {
 export async function renderLayoutA(
   photos: string[],
   filter: string = "none",
-  _designId?: string,
+  designId?: string,
 ): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1240;
@@ -127,9 +114,9 @@ export async function renderLayoutA(
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, 1240, 1844);
 
-  // 2. Load 3 photos and frame
+  // 2. Load 3 photos and frame for selected design
   const imgs = await Promise.all(photos.slice(0, 3).map(loadImg));
-  const frame = await loadStripFrame();
+  const frame = await loadFrameForDesign("A", designId);
 
   // 3. 3 equal slots per strip; right strip offset by +640
   const LEFT_SLOTS: Slot[] = [
@@ -176,7 +163,7 @@ export async function renderLayoutA(
 }
 
 /** Layout B — เต็มแผ่น 4x6 — 1844x1240 landscape, 4 portrait photos in a row */
-export async function renderLayoutB(photos: string[], filter: string = "none", _designId?: string): Promise<Blob> {
+export async function renderLayoutB(photos: string[], filter: string = "none", designId?: string): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1844;
   canvas.height = 1240;
@@ -203,8 +190,8 @@ export async function renderLayoutB(photos: string[], filter: string = "none", _
   ctx.textBaseline = "bottom";
   ctx.fillText(WATERMARK, 1820, 1225);
   ctx.restore();
-  // Frame overlay LAST (transparent PNG, full sheet)
-  const frame = await loadFrame();
+  // Frame overlay LAST (transparent PNG, full sheet) — uses selected design
+  const frame = await loadFrameForDesign("B", designId);
   if (frame) {
     ctx.drawImage(frame, 0, 0, 1844, 1240);
   } else {
