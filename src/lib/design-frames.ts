@@ -1,6 +1,9 @@
 // Mapping between DesignId and the PNG frame file used during render and preview.
 // If a custom design's PNG isn't present in /public/frames, we fall back to the
 // per-format default frame so render never breaks.
+//
+// NOTE: There is no default frame for STRIP (2x6) anymore — only FULL (4x6)
+// has a default fallback. Strip designs without a PNG render with no frame.
 import type { DesignId } from "@/components/PhotoboothOverlay";
 
 export const DESIGN_FRAME_FILE: Record<DesignId, string> = {
@@ -14,14 +17,14 @@ export const DESIGN_FRAME_FILE: Record<DesignId, string> = {
   "full-soft-pastel":    "/frames/frame_full_soft_pastel.png",
 };
 
-export function frameFallbackForDesign(designId: DesignId | undefined): string {
+export function frameFallbackForDesign(designId: DesignId | undefined): string | null {
   if (designId && designId.startsWith("full")) return "/frames/frame_full_default.png";
-  return "/frames/frame_strip_default.png";
+  return null;
 }
 
 export function frameUrlForDesign(designId: DesignId | undefined): {
-  primary: string;
-  fallback: string;
+  primary: string | null;
+  fallback: string | null;
 } {
   const fallback = frameFallbackForDesign(designId);
   const primary = designId ? (DESIGN_FRAME_FILE[designId] ?? fallback) : fallback;
@@ -29,7 +32,8 @@ export function frameUrlForDesign(designId: DesignId | undefined): {
 }
 
 const _existsCache = new Map<string, boolean>();
-export async function frameExists(url: string): Promise<boolean> {
+export async function frameExists(url: string | null | undefined): Promise<boolean> {
+  if (!url) return false;
   if (typeof window === "undefined") return false;
   if (_existsCache.has(url)) return _existsCache.get(url)!;
   const ok = await new Promise<boolean>((res) => {
