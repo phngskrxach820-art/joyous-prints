@@ -176,7 +176,7 @@ export async function renderLayoutA(
 }
 
 /** Layout B — เต็มแผ่น 4x6 — 1844x1240 landscape, 4 portrait photos in a row */
-export async function renderLayoutB(photos: string[], filter: string = "none"): Promise<Blob> {
+export async function renderLayoutB(photos: string[], filter: string = "none", _designId?: string): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1844;
   canvas.height = 1240;
