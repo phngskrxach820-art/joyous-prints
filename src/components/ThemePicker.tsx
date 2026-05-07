@@ -98,9 +98,12 @@ function FramePreview({ id }: { id: DesignId }) {
     let cancelled = false;
     const { primary, fallback } = frameUrlForDesign(id);
     (async () => {
-      const ok = await frameExists(primary);
+      const okPrimary = await frameExists(primary);
       if (cancelled) return;
-      setUrl(ok ? primary : fallback);
+      if (okPrimary && primary) { setUrl(primary); return; }
+      const okFallback = await frameExists(fallback);
+      if (cancelled) return;
+      setUrl(okFallback ? fallback : null);
     })();
     return () => { cancelled = true; };
   }, [id]);
