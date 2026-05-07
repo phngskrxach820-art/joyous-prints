@@ -493,40 +493,41 @@ function SessionPage() {
 
 function FormatPreview({ id, photos }: { id: LayoutId; photos: string[] }) {
   const p = (i: number) => photos[i] ?? "";
+  // Both layouts print on 100×148mm portrait sheets — preview matches exactly.
+  const sheetStyle: React.CSSProperties = {
+    aspectRatio: "100 / 148",
+    maxHeight: "55vh",
+  };
+
   if (id === "A") {
+    // 2x6 strip: 2 columns × 3 photos, dashed cut line down the middle
     return (
-      <div className="aspect-[2/3] mx-auto w-2/3 bg-white rounded-xl p-1 flex gap-1 relative">
-        {[0, 1].map((s) => (
-          <div key={s} className="flex-1 bg-slate-900 rounded p-1 flex flex-col gap-0.5">
-            <div className="h-4 bg-slate-700 rounded-sm mb-0.5" />
-            {[0, 1, 2, 3].map((i) => (
+      <div
+        className="mx-auto bg-white rounded-xl p-2 grid grid-cols-2 gap-2 relative shadow-md"
+        style={sheetStyle}
+      >
+        {[0, 1].map((col) => (
+          <div key={col} className="flex flex-col gap-1.5">
+            {[0, 1, 2].map((i) => (
               <div key={i} className="flex-1 bg-muted overflow-hidden rounded-sm">
                 {p(i) && <img src={p(i)} alt="" className="w-full h-full object-cover" />}
               </div>
             ))}
-            <div className="h-3 bg-slate-700 rounded-sm mt-0.5" />
           </div>
         ))}
-        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l border-dashed border-slate-400" />
+        <div className="absolute inset-y-2 left-1/2 -translate-x-1/2 border-l border-dashed border-slate-400 pointer-events-none" />
       </div>
     );
   }
-  if (id === "B") {
-    return (
-      <div className="aspect-[3/2] bg-white rounded-xl p-1 grid grid-cols-2 gap-1">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="bg-muted overflow-hidden rounded">
-            {p(i) && <img src={p(i)} alt="" className="w-full h-full object-cover" />}
-          </div>
-        ))}
-      </div>
-    );
-  }
-  // C
+
+  // Layout B — 4x6 full portrait, 2×2 grid
   return (
-    <div className="aspect-[2/3] mx-auto w-1/2 bg-white rounded-xl p-1 flex flex-col gap-1">
+    <div
+      className="mx-auto bg-white rounded-xl p-2 grid grid-cols-2 grid-rows-2 gap-2 shadow-md"
+      style={sheetStyle}
+    >
       {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="flex-1 bg-muted overflow-hidden rounded">
+        <div key={i} className="bg-muted overflow-hidden rounded">
           {p(i) && <img src={p(i)} alt="" className="w-full h-full object-cover" />}
         </div>
       ))}

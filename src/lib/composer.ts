@@ -63,10 +63,18 @@ function watermark(ctx: CanvasRenderingContext2D, x: number, y: number, align: C
   ctx.restore();
 }
 
+// Print sheet 100x148mm portrait → ~1240x1835 px @ ~315dpi
+export const PRINT_W_MM = 100;
+export const PRINT_H_MM = 148;
+export const PRINT_ASPECT = PRINT_W_MM / PRINT_H_MM;
+export const CANVAS_W = 1240;
+export const CANVAS_H = Math.round(CANVAS_W / PRINT_ASPECT); // 1835
+
 async function loadFrameForDesign(format: "A" | "B", designId?: string): Promise<HTMLImageElement | null> {
   const { primary, fallback } = frameUrlForDesign(designId as DesignId | undefined);
-  const defaultFile = format === "A" ? "/frames/frame_strip_default.png" : "/frames/frame_full_default.png";
-  const candidates = [primary, fallback, defaultFile];
+  // Strip (format A) no longer has a default. Full (B) falls back to default.
+  const defaultFile = format === "B" ? "/frames/frame_full_default.png" : null;
+  const candidates = [primary, fallback, defaultFile].filter((s): s is string => !!s);
   for (const src of candidates) {
     try {
       return await loadImg(src);
@@ -104,31 +112,32 @@ export async function renderLayoutA(
   designId?: string,
 ): Promise<Blob> {
   const canvas = document.createElement("canvas");
-  canvas.width = 1240;
-  canvas.height = 1844;
+  canvas.width = CANVAS_W;
+  canvas.height = CANVAS_H;
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
   // 1. White background
   ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0, 0, 1240, 1844);
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
   // 2. Load 3 photos and frame for selected design
   const imgs = await Promise.all(photos.slice(0, 3).map(loadImg));
   const frame = await loadFrameForDesign("A", designId);
 
-  // 3. 3 equal slots per strip; right strip offset by +640
-  const LEFT_SLOTS: Slot[] = [
-    { x: 40,  y: 140,  w: 520, h: 490, shape: "rect" },
-    { x: 40,  y: 650,  w: 520, h: 490, shape: "rect" },
-    { x: 40,  y: 1160, w: 520, h: 490, shape: "rect" },
-  ];
-  const RIGHT_SLOTS: Slot[] = [
-    { x: 680, y: 140,  w: 520, h: 490, shape: "rect" },
-    { x: 680, y: 650,  w: 520, h: 490, shape: "rect" },
-    { x: 680, y: 1160, w: 520, h: 490, shape: "rect" },
-  ];
+  // 3. Two strips side-by-side, 3 photo slots each, on a 1240x1835 sheet.
+  const stripW = 520;
+  const stripH = Math.floor((CANVAS_H - 40 * 2) / 3);
+  const yTop = 40;
+  const xLeft = 40;
+  const xRight = 680;
+  const LEFT_SLOTS: Slot[] = [0, 1, 2].map((i) => ({
+    x: xLeft, y: yTop + i * stripH, w: stripW, h: stripH, shape: "rect",
+  }));
+  const RIGHT_SLOTS: Slot[] = [0, 1, 2].map((i) => ({
+    x: xRight, y: yTop + i * stripH, w: stripW, h: stripH, shape: "rect",
+  }));
 
   // 4. Draw photos into slots (3 per strip)
   const allSlots = [...LEFT_SLOTS, ...RIGHT_SLOTS];
@@ -154,50 +163,57 @@ export async function renderLayoutA(
     ctx.restore();
   });
 
-  // 5. Draw frame ONCE on top (full canvas size)
+  // 5. Center dotted cut guide when no PNG frame supplies one
+  if (!frame) {
+    ctx.save();
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.moveTo(CANVAS_W / 2, 20);
+    ctx.lineTo(CANVAS_W / 2, CANVAS_H - 20);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 6. Draw frame ONCE on top (full canvas size)
   if (frame) {
-    ctx.drawImage(frame, 0, 0, 1240, 1844);
+    ctx.drawImage(frame, 0, 0, CANVAS_W, CANVAS_H);
   }
 
   return canvasToBlob(canvas, "image/jpeg", 1.0);
 }
 
-/** Layout B — เต็มแผ่น 4x6 — 1844x1240 landscape, 4 portrait photos in a row */
+/** Layout B — เต็มแผ่น 4x6 portrait — 1240x1835, 4 photos in 2x2 grid */
 export async function renderLayoutB(photos: string[], filter: string = "none", designId?: string): Promise<Blob> {
   const canvas = document.createElement("canvas");
-  canvas.width = 1844;
-  canvas.height = 1240;
+  canvas.width = CANVAS_W;
+  canvas.height = CANVAS_H;
   const ctx = canvas.getContext("2d")!;
   ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0, 0, 1844, 1240);
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
-  // 4 portrait slots in a row. Sheet 1844x1240. Margins + gaps.
-  const marginX = 30;
+  // 2x2 grid on portrait sheet
+  const marginX = 40;
   const marginY = 40;
-  const footerH = 100;
-  const gap = 16;
-  const slotW = (1844 - marginX * 2 - gap * 3) / 4; // ~437
-  const slotH = 1240 - marginY * 2 - footerH;       // ~1060
+  const gap = 20;
+  const slotW = (CANVAS_W - marginX * 2 - gap) / 2;
+  const slotH = (CANVAS_H - marginY * 2 - gap) / 2;
   for (let i = 0; i < 4; i++) {
-    const x = marginX + i * (slotW + gap);
-    drawCoverFiltered(ctx, imgs[i], x, marginY, slotW, slotH, filter);
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = marginX + col * (slotW + gap);
+    const y = marginY + row * (slotH + gap);
+    drawCoverFiltered(ctx, imgs[i], x, y, slotW, slotH, filter);
   }
-  // Watermark dark on white
-  ctx.save();
-  ctx.font = "500 22px 'Noto Sans Thai', sans-serif";
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
-  ctx.textAlign = "right";
-  ctx.textBaseline = "bottom";
-  ctx.fillText(WATERMARK, 1820, 1225);
-  ctx.restore();
   // Frame overlay LAST (transparent PNG, full sheet) — uses selected design
   const frame = await loadFrameForDesign("B", designId);
   if (frame) {
-    ctx.drawImage(frame, 0, 0, 1844, 1240);
+    ctx.drawImage(frame, 0, 0, CANVAS_W, CANVAS_H);
   } else {
     ctx.strokeStyle = "rgba(0,0,0,0.08)";
     ctx.lineWidth = 4;
-    ctx.strokeRect(2, 2, 1840, 1236);
+    ctx.strokeRect(2, 2, CANVAS_W - 4, CANVAS_H - 4);
   }
   return canvasToBlob(canvas);
 }
