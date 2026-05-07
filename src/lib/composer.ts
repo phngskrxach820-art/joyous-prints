@@ -63,10 +63,18 @@ function watermark(ctx: CanvasRenderingContext2D, x: number, y: number, align: C
   ctx.restore();
 }
 
+// Print sheet 100x148mm portrait → ~1240x1835 px @ ~315dpi
+export const PRINT_W_MM = 100;
+export const PRINT_H_MM = 148;
+export const PRINT_ASPECT = PRINT_W_MM / PRINT_H_MM;
+export const CANVAS_W = 1240;
+export const CANVAS_H = Math.round(CANVAS_W / PRINT_ASPECT); // 1835
+
 async function loadFrameForDesign(format: "A" | "B", designId?: string): Promise<HTMLImageElement | null> {
   const { primary, fallback } = frameUrlForDesign(designId as DesignId | undefined);
-  const defaultFile = format === "A" ? "/frames/frame_strip_default.png" : "/frames/frame_full_default.png";
-  const candidates = [primary, fallback, defaultFile];
+  // Strip (format A) no longer has a default. Full (B) falls back to default.
+  const defaultFile = format === "B" ? "/frames/frame_full_default.png" : null;
+  const candidates = [primary, fallback, defaultFile].filter((s): s is string => !!s);
   for (const src of candidates) {
     try {
       return await loadImg(src);
