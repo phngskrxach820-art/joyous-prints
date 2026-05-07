@@ -132,11 +132,15 @@ export async function renderLayoutA(
 
   // 3. 3 equal slots per strip; right strip offset by +640
   const LEFT_SLOTS: Slot[] = [
-    { x: 40, y: 140,  w: 520, h: 490, shape: "rect" },
-    { x: 40, y: 660,  w: 520, h: 490, shape: "rect" },
-    { x: 40, y: 1180, w: 520, h: 490, shape: "rect" },
+    { x: 40,  y: 140,  w: 520, h: 490, shape: "rect" },
+    { x: 40,  y: 650,  w: 520, h: 490, shape: "rect" },
+    { x: 40,  y: 1160, w: 520, h: 490, shape: "rect" },
   ];
-  const RIGHT_SLOTS: Slot[] = LEFT_SLOTS.map((s) => ({ ...s, x: s.x + 640 }));
+  const RIGHT_SLOTS: Slot[] = [
+    { x: 680, y: 140,  w: 520, h: 490, shape: "rect" },
+    { x: 680, y: 650,  w: 520, h: 490, shape: "rect" },
+    { x: 680, y: 1160, w: 520, h: 490, shape: "rect" },
+  ];
 
   // 4. Draw photos into slots (3 per strip)
   const allSlots = [...LEFT_SLOTS, ...RIGHT_SLOTS];
