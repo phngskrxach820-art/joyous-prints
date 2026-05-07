@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { CaptureFlow } from "@/components/CaptureFlow";
-import { LAYOUTS, renderLayout, renderLayoutD, type LayoutId } from "@/lib/composer";
+import { LAYOUTS, renderLayout, type LayoutId } from "@/lib/composer";
 import { loadConfig } from "@/lib/admin-config";
 import { paymentSuccess, chime } from "@/lib/audio";
 import { ThemePicker } from "@/components/ThemePicker";
