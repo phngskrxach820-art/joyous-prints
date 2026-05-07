@@ -29,10 +29,7 @@ function SessionPage() {
 
   const [confirming, setConfirming] = useState(false);
   const [paid, setPaid] = useState(false);
-  const [photoOutputUrl, setPhotoOutputUrl] = useState<string>("");
-  const [gifOutputUrl, setGifOutputUrl] = useState<string>("");
-  const [photoQr, setPhotoQr] = useState<string>("");
-  const [gifQr, setGifQr] = useState<string>("");
+  const [photoOutputBlob, setPhotoOutputBlob] = useState<Blob | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrintedOnce, setHasPrintedOnce] = useState(false);
   const [printStatus, setPrintStatus] = useState<string>("");
