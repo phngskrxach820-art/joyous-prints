@@ -1,55 +1,65 @@
-ผมเจอสาเหตุแล้ว: ตอนนี้ระบบมีตัวเลือกกรอบ/ธีม แต่โค้ดถ่ายจริงกับ render รูปสุดท้ายไม่ได้ใช้กรอบที่เลือกจริง ๆ
 
-ปัญหาหลักที่พบ:
-- `CaptureFlow` รับ `design` เข้ามา แต่ไม่ render `PhotoboothOverlay` เลย ทำให้หน้าถ่ายเห็นแค่กล้องเปล่ากับเส้นประเดิม เหมือนถูกล็อคทั้ง 2x6 และ 4x6
-- `composer.ts` รับ `designId` แล้วแต่ทิ้งค่าไว้ (`_designId`) และโหลดไฟล์ default ตายตัวเสมอ:
-  - 2x6 ใช้ `/frames/frame_strip_default.png`
-  - 4x6 ใช้ `/frames/frame_full_default.png`
-- `PhotoboothOverlay.tsx` ถูกเปลี่ยนให้ทุก design กลายเป็น crop guide เส้นประเหมือนกันหมด จึงไม่มีความต่างระหว่างกรอบที่เลือก
-- ระบบกรอบที่เพิ่มใน `src/lib/frames.ts` ยังไม่ได้ถูกเชื่อมเข้ากับหน้าเลือกธีม/การ render จริง
+# แผนแก้ไข: สัดส่วนพิมพ์จริง 100×148mm + เคลียร์ overlay ตอนถ่าย
 
-แผนแก้แบบ FIX ONLY:
+## 1. ลบไฟล์และอ้างอิง `frame_strip_default.png`
 
-1. ทำให้หน้าถ่ายใช้กรอบที่เลือกจริง
-- ใน `CaptureFlow.tsx` จะครอบ video ด้วย `PhotoboothOverlay` หรือ equivalent overlay ที่ใช้ `design` ปัจจุบัน
-- กรอบ/ธีมที่เลือกจะปรากฏทันทีตอนถ่าย ไม่ใช่แค่เส้นประเหมือนเดิม
-- คง crop guide/สัดส่วนเดิมไว้เท่าที่จำเป็น ไม่แตะ logic ถ่ายภาพ/payment/print
+- ลบไฟล์ `public/frames/frame_strip_default.png`
+- `src/lib/design-frames.ts` → `frameFallbackForDesign()` คืน `null` สำหรับ design strip (ไม่มี fallback) แต่ full ยังคืน `/frames/frame_full_default.png`
+- `src/lib/composer.ts` → `loadFrameForDesign("A", …)` ถ้า design ที่เลือกไม่มี PNG ของตัวเอง → ไม่วาด frame เลย (ปริ้นรูปเปล่าๆ บนพื้นหลัง white)
+- `src/lib/frames.ts` → ลบ entry `strip-default` ออกจาก `DEFAULTS`
+- `src/routes/__root.tsx` → เอาบรรทัด prefetch `/frames/frame_strip_default.png` ออก
+- `src/components/CaptureFlow.tsx` และ `ThemePicker.tsx` → ใช้ผลลัพธ์ใหม่ของ `frameUrlForDesign` ที่อาจคืน `null` ได้
 
-2. ทำให้ final canvas ใช้ `selectedDesignId` จริง
-- ใน `composer.ts` จะเลิก ignore `designId`
-- เปลี่ยน `loadFrame()` / `loadStripFrame()` ให้เลือกไฟล์จาก design ที่ส่งเข้ามา แทนการ hardcode default
-- ถ้าเลือก strip design ให้โหลดกรอบ strip ของ design นั้น
-- ถ้าเลือก full design ให้โหลดกรอบ full ของ design นั้น
-- ถ้าไฟล์กรอบนั้นไม่มี จะ fallback เป็น default เฉพาะกรณีจำเป็น เพื่อไม่ให้ render พัง
+## 2. กำหนดสัดส่วนกลาง = 100×148mm portrait (≈ 0.6757)
 
-3. ทำ mapping ระหว่าง design id กับไฟล์ PNG กรอบ
-- เพิ่ม mapping เช่น:
-  - `strip-korean-mono` -> `/frames/frame_strip_korean_mono.png`
-  - `strip-y2k-cyber` -> `/frames/frame_strip_y2k_cyber.png`
-  - `strip-siam-marigold` -> `/frames/frame_strip_siam_marigold.png`
-  - `strip-bunny-cute` -> `/frames/frame_strip_bunny_cute.png`
-  - `full-korean-cafe` -> `/frames/frame_full_korean_cafe.png`
-  - `full-y2k-fairy` -> `/frames/frame_full_y2k_fairy.png`
-  - `full-siam-sunset` -> `/frames/frame_full_siam_sunset.png`
-  - `full-soft-pastel` -> `/frames/frame_full_soft_pastel.png`
-- ถ้าโปรเจกต์ยังไม่มี PNG เหล่านี้ จะยัง fallback ไป default ได้ แต่โครงระบบจะไม่ล็อค default อีกต่อไป
-
-4. แก้ preview หน้าเลือกกรอบให้ไม่หลอกตา
-- ตอนนี้ `ThemePicker` ใช้ `PhotoboothOverlay` แต่ทุกกรอบแสดงเส้นประเหมือนกัน
-- จะทำให้ preview card แสดง frame PNG ของ design นั้นจริง ถ้าไฟล์มี
-- ถ้าไม่มีไฟล์จะแสดง fallback แบบชัดเจน ไม่ใช่ทำเหมือนเลือกแล้วแต่สุดท้ายเหมือนเดิม
-
-5. ตรวจเส้นทาง state ให้กรอบไม่หายกลางทาง
-- ยืนยันและแก้เฉพาะจุดที่จำเป็นให้ `designId` ผ่านครบ:
+สร้างค่ากลางใน `src/lib/composer.ts`:
 
 ```text
-theme picker -> capture -> filter -> payment -> render -> delivery/print
+PRINT_W_MM = 100
+PRINT_H_MM = 148
+PRINT_ASPECT = 100/148   // ใช้ทั่วทั้งแอป
+CANVAS_W = 1240          // px
+CANVAS_H = 1835          // px (1240 / (100/148))
 ```
 
-- ไม่เปลี่ยน payment amount, promo, Cloudinary/local server, หรือ print queue logic
+- เปลี่ยน Layout B (`renderLayoutB`) จาก landscape `1844×1240` → portrait `1240×1835`, จัด 4 ช่องเป็น 2×2 grid (เหมือน design 4-slot ที่วางไว้แล้ว)
+- Layout A คง `1240×1835` portrait (strip ซ้าย+ขวา 3 รูป) — ปรับตัวเลข slot เล็กน้อยให้ตรง 1835
+- `printCanvas()` ใน `session.$id.tsx` ตั้ง `@page size: 100mm 148mm portrait` อยู่แล้ว — คงไว้
 
-ผลลัพธ์หลังแก้:
-- เลือกกรอบไหน ตอนถ่ายต้องเห็นกรอบนั้น
-- รูปที่ render/print ต้องใช้กรอบนั้น ไม่กลับไป default
-- 2x6 และ 4x6 จะไม่เหมือนถูกล็อคกรอบเดิมอีก
-- ถ้าไฟล์กรอบ custom ยังไม่ได้อยู่ใน `/public/frames` ระบบจะไม่พัง แต่จะ fallback พร้อมโครงที่พร้อมใช้ทันทีเมื่อมีไฟล์
+## 3. FormatPreview ใหม่ (หน้าจ่ายเงิน)
+
+แก้ `FormatPreview` ใน `src/routes/session.$id.tsx` ให้:
+
+- กล่องนอกใช้ `aspect-ratio: 100/148` (portrait) ทั้ง A และ B — ตรงกับกระดาษจริง
+- **Layout A (2×6 strip):** กรอบขาว portrait → แบ่ง 2 คอลัมน์ซ้าย/ขวา → แต่ละคอลัมน์ 3 ช่องรูปวางเรียงลง + เส้นประตัดกลาง
+- **Layout B (4×6 full):** กรอบขาว portrait → grid 2×2 ช่องรูป
+- รูป thumbnail ใช้ `object-fit: cover` เหมือนเดิม
+
+ผลลัพธ์: ลูกค้าเห็น preview ที่อัตราส่วนเดียวกันกับใบที่ออกจากปริ้นเตอร์เป๊ะ
+
+## 4. Capture overlay = crop guide เท่านั้น
+
+แก้ `src/components/CaptureFlow.tsx`:
+
+- ลบ state `frameUrl`, `useEffect` ที่โหลด frame, และ `<img>` overlay frame บน video
+- ลบ import `frameUrlForDesign`, `frameExists`
+- เก็บแค่กล่อง `border-2 border-dashed border-white/70` (crop guide เดิม) — ไม่มีลายตกแต่งใดๆ
+- กรอบจริงจะถูกวางตอน final render เท่านั้น (ผ่าน `composer.ts` → PNG ที่จะอัปโหลดทีหลัง)
+
+`ThemePicker` `FramePreview` คงไว้ (ใช้แสดงตัวอย่างกรอบบน theme card) — ถ้า PNG ไม่มี ก็ไม่แสดง
+
+## 5. ไฟล์ที่จะแก้
+
+- ลบ: `public/frames/frame_strip_default.png`
+- แก้: `src/lib/design-frames.ts`, `src/lib/composer.ts`, `src/lib/frames.ts`
+- แก้: `src/routes/__root.tsx` (เอา prefetch ออก)
+- แก้: `src/routes/session.$id.tsx` (FormatPreview ใหม่)
+- แก้: `src/components/CaptureFlow.tsx` (เอา overlay frame ออก)
+
+## ของที่ไม่แตะ
+
+- ราคา / โปรโมชัน / promo logic
+- LAN server / print queue
+- Cloudinary / Supabase upload flow
+- FilterPicker
+- ThemePicker (นอกจากปรับให้รับ `null` จาก fallback)
