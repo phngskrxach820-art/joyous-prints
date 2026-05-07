@@ -38,14 +38,7 @@ export function ThemePicker({ onBack, onPick }: Props) {
       >
         <div className="w-full flex items-center justify-center p-3 bg-muted/30">
           <div className="w-full max-w-[180px]">
-            <PhotoboothOverlay design={id} filter="none">
-              <div
-                className="w-full h-full"
-                style={{
-                  background: `linear-gradient(135deg, ${meta.bgColor}, ${meta.accentColor})`,
-                }}
-              />
-            </PhotoboothOverlay>
+            <FramePreview id={id} />
           </div>
         </div>
         <div className="p-3 text-sm font-semibold text-center">
