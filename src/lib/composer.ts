@@ -77,6 +77,8 @@ async function loadFrameForDesign(format: "A" | "B", designId?: string): Promise
   return null;
 }
 
+type Slot = { x: number; y: number; w: number; h: number; shape: "oval" | "rect" };
+
 function drawSlotShape(ctx: CanvasRenderingContext2D, slot: Slot) {
   ctx.beginPath();
   if (slot.shape === "oval") {
