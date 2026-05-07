@@ -145,7 +145,7 @@ export async function renderLayoutB(photos: string[], filter: string = "none"): 
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
   FULL_SLOTS.forEach((slot, i) => {
-    if (imgs[i]) drawCoverFiltered(ctx, imgs[i], slot.x, slot.y, slot.w, slot.h, filter);
+    if (imgs[i]) drawSlotWithFilter(ctx, imgs[i], slot, filter);
   });
   const frame = await loadFramePNG("full");
   if (frame) ctx.drawImage(frame, 0, 0, CANVAS_W, CANVAS_H);
