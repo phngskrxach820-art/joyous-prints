@@ -18,7 +18,7 @@ import React from "react";
 
 export const FILTERS = {
   none: "none",
-  softSkin: "blur(0.3px) brightness(1.03) contrast(0.98) saturate(1.04)",
+  softSkin: "brightness(1.04) contrast(0.97) saturate(1.06)",
   vintage: "sepia(0.4) contrast(0.92) brightness(1.05) saturate(0.85) hue-rotate(-8deg)",
   blackWhite: "grayscale(1) contrast(1.05) brightness(1.02)",
 } as const;

@@ -14,7 +14,6 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionIdRouteImport } from './routes/session.$id'
 import { Route as DownloadIdRouteImport } from './routes/download.$id'
-import { Route as DIdKindRouteImport } from './routes/d.$id.$kind'
 
 const LiveRoute = LiveRouteImport.update({
   id: '/live',
@@ -41,11 +40,6 @@ const DownloadIdRoute = DownloadIdRouteImport.update({
   path: '/download/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DIdKindRoute = DIdKindRouteImport.update({
-  id: '/d/$id/$kind',
-  path: '/d/$id/$kind',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -53,7 +47,6 @@ export interface FileRoutesByFullPath {
   '/live': typeof LiveRoute
   '/download/$id': typeof DownloadIdRoute
   '/session/$id': typeof SessionIdRoute
-  '/d/$id/$kind': typeof DIdKindRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,7 +54,6 @@ export interface FileRoutesByTo {
   '/live': typeof LiveRoute
   '/download/$id': typeof DownloadIdRoute
   '/session/$id': typeof SessionIdRoute
-  '/d/$id/$kind': typeof DIdKindRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,33 +62,13 @@ export interface FileRoutesById {
   '/live': typeof LiveRoute
   '/download/$id': typeof DownloadIdRoute
   '/session/$id': typeof SessionIdRoute
-  '/d/$id/$kind': typeof DIdKindRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/admin'
-    | '/live'
-    | '/download/$id'
-    | '/session/$id'
-    | '/d/$id/$kind'
+  fullPaths: '/' | '/admin' | '/live' | '/download/$id' | '/session/$id'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/admin'
-    | '/live'
-    | '/download/$id'
-    | '/session/$id'
-    | '/d/$id/$kind'
-  id:
-    | '__root__'
-    | '/'
-    | '/admin'
-    | '/live'
-    | '/download/$id'
-    | '/session/$id'
-    | '/d/$id/$kind'
+  to: '/' | '/admin' | '/live' | '/download/$id' | '/session/$id'
+  id: '__root__' | '/' | '/admin' | '/live' | '/download/$id' | '/session/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -105,7 +77,6 @@ export interface RootRouteChildren {
   LiveRoute: typeof LiveRoute
   DownloadIdRoute: typeof DownloadIdRoute
   SessionIdRoute: typeof SessionIdRoute
-  DIdKindRoute: typeof DIdKindRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -145,13 +116,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DownloadIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/d/$id/$kind': {
-      id: '/d/$id/$kind'
-      path: '/d/$id/$kind'
-      fullPath: '/d/$id/$kind'
-      preLoaderRoute: typeof DIdKindRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -161,8 +125,16 @@ const rootRouteChildren: RootRouteChildren = {
   LiveRoute: LiveRoute,
   DownloadIdRoute: DownloadIdRoute,
   SessionIdRoute: SessionIdRoute,
-  DIdKindRoute: DIdKindRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
