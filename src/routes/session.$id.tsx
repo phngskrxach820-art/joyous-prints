@@ -133,7 +133,7 @@ function SessionPage() {
       } catch (e2) {
         console.error("render attempt 2 failed", e2);
         try {
-          return await renderLayout(l, urls, "none");
+          return await renderLayout(l, urls, "none", designId ?? (l === "A" ? "strip-bunny-cute" : "full-korean-cafe"));
         } catch (e3) {
           console.error("final fallback render failed", e3);
           return null;
