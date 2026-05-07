@@ -1,20 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera as CamIcon, ArrowLeft } from "lucide-react";
 import { tick, shutter } from "@/lib/audio";
-import type { DesignId, FilterKey } from "@/components/PhotoboothOverlay";
-
 
 type Props = {
   onComplete: (photos: Blob[]) => void;
   totalShots?: number;
   onBack?: () => void;
-  /** target ratio width/height. Format A strip => 9/16, Format B => 3/4 */
+  /** target ratio width/height. Format A => 9/16, Format B => 3/4 */
   aspectRatio?: number;
-  design?: DesignId;
-  filter?: FilterKey;
 };
 
-export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 3 / 4, design = "strip-korean-mono", filter = "none" }: Props) {
+export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 3 / 4 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [phase, setPhase] = useState<"init" | "ready" | "pause" | "countdown" | "flash" | "review" | "done" | "error">("init");
@@ -25,27 +21,16 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
   const [errMsg, setErrMsg] = useState("");
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
-  // Capture screen shows ONLY the dashed crop guide. Decorative frames are
-  // applied at final render time, never during the live preview.
-  void design;
 
   useEffect(() => {
     let cancelled = false;
     async function start() {
       try {
         const initial = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            aspectRatio: { ideal: 16 / 9 },
-            facingMode: "user",
-          },
+          video: { width: { ideal: 1920 }, height: { ideal: 1080 }, aspectRatio: { ideal: 16 / 9 }, facingMode: "user" },
           audio: false,
         });
-        if (cancelled) {
-          initial.getTracks().forEach((t) => t.stop());
-          return;
-        }
+        if (cancelled) { initial.getTracks().forEach((t) => t.stop()); return; }
         streamRef.current = initial;
         if (videoRef.current) videoRef.current.srcObject = initial;
         const all = await navigator.mediaDevices.enumerateDevices();
@@ -71,29 +56,19 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
     try {
       streamRef.current?.getTracks().forEach((t) => t.stop());
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
+        video: { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false,
       });
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
       setSelectedDeviceId(deviceId);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
   }
 
-  function beginCountdown() {
-    setPhase("countdown");
-    setCount(3);
-  }
+  function beginCountdown() { setPhase("countdown"); setCount(3); }
 
-  // Countdown ticker
   useEffect(() => {
     if (phase !== "countdown") return;
-    if (count <= 0) {
-      capture();
-      return;
-    }
+    if (count <= 0) { capture(); return; }
     tick();
     const t = setTimeout(() => setCount((c) => c - 1), 1000);
     return () => clearTimeout(t);
@@ -108,17 +83,13 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
     const vh = video.videoHeight;
     let cropW = vh * aspectRatio;
     let cropH = vh;
-    if (cropW > vw) {
-      cropW = vw;
-      cropH = vw / aspectRatio;
-    }
+    if (cropW > vw) { cropW = vw; cropH = vw / aspectRatio; }
     const sx = (vw - cropW) / 2;
     const sy = (vh - cropH) / 2;
     const outH = 1200;
     const outW = Math.round(outH * aspectRatio);
     const c = document.createElement("canvas");
-    c.width = outW;
-    c.height = outH;
+    c.width = outW; c.height = outH;
     const ctx = c.getContext("2d")!;
     ctx.translate(outW, 0);
     ctx.scale(-1, 1);
@@ -129,8 +100,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
     const url = URL.createObjectURL(blob);
     const newBlobs = [...blobs, blob];
     const newThumbs = [...thumbs, url];
-    setBlobs(newBlobs);
-    setThumbs(newThumbs);
+    setBlobs(newBlobs); setThumbs(newThumbs);
     setPhase("flash");
     setTimeout(() => {
       setPhase("review");
@@ -141,10 +111,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
         } else {
           setShotIndex((i) => i + 1);
           setPhase("pause");
-          setTimeout(() => {
-            setPhase("countdown");
-            setCount(3);
-          }, 600);
+          setTimeout(() => { setPhase("countdown"); setCount(3); }, 600);
         }
       }, 800);
     }, 180);
@@ -157,15 +124,12 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
           <CamIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
           <h2 className="text-2xl font-bold mb-3">เปิดกล้องไม่ได้</h2>
           <p className="text-muted-foreground mb-6 max-w-md">{errMsg}</p>
-          <p className="text-sm text-muted-foreground">
-            กรุณาอนุญาตให้เว็บใช้กล้อง แล้วรีเฟรชหน้านี้
-          </p>
+          <p className="text-sm text-muted-foreground">กรุณาอนุญาตให้เว็บใช้กล้อง แล้วรีเฟรชหน้านี้</p>
         </div>
       </div>
     );
   }
 
-  // Container matches target capture ratio; no theme overlay during shoot.
   const isPortrait = aspectRatio < 1;
   const containerStyle: React.CSSProperties = isPortrait
     ? { aspectRatio: `${aspectRatio}`, maxHeight: "70vh", width: "auto" }
@@ -203,19 +167,15 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
       )}
 
       <div
-        className="relative mx-auto rounded-3xl overflow-hidden bg-black mt-16 shadow-2xl border-2 border-dashed border-white/70"
+        className="relative mx-auto rounded-3xl overflow-hidden bg-black mt-16 shadow-2xl"
         style={containerStyle}
       >
         <video
           ref={videoRef}
-          autoPlay
-          playsInline
-          muted
+          autoPlay playsInline muted
           className="w-full h-full object-cover"
-          style={{ transform: "scaleX(-1)", filter: filter && filter !== "none" ? undefined : undefined }}
+          style={{ transform: "scaleX(-1)" }}
         />
-
-        {/* No decorative overlay during capture — only crop guide on container */}
 
         {phase === "countdown" && count > 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -237,17 +197,11 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
           </div>
         )}
 
-        {phase === "flash" && (
-          <div className="absolute inset-0 bg-white animate-flash pointer-events-none" />
-        )}
+        {phase === "flash" && (<div className="absolute inset-0 bg-white animate-flash pointer-events-none" />)}
 
         {phase === "review" && thumbs.length > 0 && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
-            <img
-              src={thumbs[thumbs.length - 1]}
-              className="max-h-[80%] rounded-2xl shadow-2xl animate-fade-in"
-              alt="just captured"
-            />
+            <img src={thumbs[thumbs.length - 1]} className="max-h-[80%] rounded-2xl shadow-2xl animate-fade-in" alt="just captured" />
           </div>
         )}
 
@@ -277,9 +231,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
         {Array.from({ length: totalShots }, (_, i) => i).map((i) => (
           <div
             key={i}
-            className={`w-16 h-12 rounded-lg border-2 overflow-hidden ${
-              thumbs[i] ? "border-primary" : "border-border bg-muted"
-            }`}
+            className={`w-16 h-12 rounded-lg border-2 overflow-hidden ${thumbs[i] ? "border-primary" : "border-border bg-muted"}`}
           >
             {thumbs[i] && <img src={thumbs[i]} className="w-full h-full object-cover" alt="" />}
           </div>
