@@ -222,8 +222,19 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
           playsInline
           muted
           className="w-full h-full object-cover"
-          style={{ transform: "scaleX(-1)" }}
+          style={{ transform: "scaleX(-1)", filter: filter && filter !== "none" ? undefined : undefined }}
         />
+
+        {/* Selected design's frame overlaid on the live preview */}
+        {frameUrl && (
+          <img
+            src={frameUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 w-full h-full pointer-events-none select-none"
+            style={{ objectFit: isPortrait ? "cover" : "fill", opacity: 0.95 }}
+          />
+        )}
 
         {phase === "countdown" && count > 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
