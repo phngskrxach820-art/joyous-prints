@@ -101,7 +101,7 @@ function drawSlotShape(ctx: CanvasRenderingContext2D, slot: Slot) {
 export async function renderLayoutA(
   photos: string[],
   filter: string = "none",
-  _designId?: string,
+  designId?: string,
 ): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1240;
@@ -114,9 +114,9 @@ export async function renderLayoutA(
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, 1240, 1844);
 
-  // 2. Load 3 photos and frame
+  // 2. Load 3 photos and frame for selected design
   const imgs = await Promise.all(photos.slice(0, 3).map(loadImg));
-  const frame = await loadStripFrame();
+  const frame = await loadFrameForDesign("A", designId);
 
   // 3. 3 equal slots per strip; right strip offset by +640
   const LEFT_SLOTS: Slot[] = [
