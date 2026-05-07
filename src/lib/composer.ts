@@ -281,10 +281,10 @@ function canvasToBlob(c: HTMLCanvasElement, type = "image/jpeg", q = 0.97): Prom
   );
 }
 
-export async function renderLayout(layout: LayoutId, photos: string[], filter: string = "none"): Promise<Blob> {
+export async function renderLayout(layout: LayoutId, photos: string[], filter: string = "none", designId?: string): Promise<Blob> {
   switch (layout) {
-    case "A": return renderLayoutA(photos, filter);
-    case "B": return renderLayoutB(photos, filter);
+    case "A": return renderLayoutA(photos, filter, designId);
+    case "B": return renderLayoutB(photos, filter, designId);
     case "C": return renderLayoutC(photos, filter);
     case "D": return renderLayoutD(photos, filter);
   }
