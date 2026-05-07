@@ -25,6 +25,19 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
   const [errMsg, setErrMsg] = useState("");
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
+  const [frameUrl, setFrameUrl] = useState<string | null>(null);
+
+  // Resolve which PNG frame overlay to show during capture (matches selected design)
+  useEffect(() => {
+    let cancelled = false;
+    const { primary, fallback } = frameUrlForDesign(design);
+    (async () => {
+      const ok = await frameExists(primary);
+      if (cancelled) return;
+      setFrameUrl(ok ? primary : fallback);
+    })();
+    return () => { cancelled = true; };
+  }, [design]);
 
   useEffect(() => {
     let cancelled = false;
