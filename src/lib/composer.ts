@@ -63,9 +63,10 @@ function watermark(ctx: CanvasRenderingContext2D, x: number, y: number, align: C
   ctx.restore();
 }
 
-async function loadFrame(format: "A" | "B" = "B"): Promise<HTMLImageElement | null> {
-  const file = format === "A" ? "frame_strip_default.png" : "frame_full_default.png";
-  const candidates = [`/frames/${file}`, "/frames/frame_default.png", "/frame_default.png"];
+async function loadFrameForDesign(format: "A" | "B", designId?: string): Promise<HTMLImageElement | null> {
+  const { primary, fallback } = frameUrlForDesign(designId as DesignId | undefined);
+  const defaultFile = format === "A" ? "/frames/frame_strip_default.png" : "/frames/frame_full_default.png";
+  const candidates = [primary, fallback, defaultFile];
   for (const src of candidates) {
     try {
       return await loadImg(src);
@@ -74,24 +75,6 @@ async function loadFrame(format: "A" | "B" = "B"): Promise<HTMLImageElement | nu
     }
   }
   return null;
-}
-
-type Slot = { x: number; y: number; w: number; h: number; shape: "oval" | "rect" };
-
-const STRIP_SLOTS: Slot[] = [
-  // Strip is 600x1844, 3 slots stacked equally
-  { x: 40, y: 140,  w: 520, h: 490, shape: "rect" },
-  { x: 40, y: 660,  w: 520, h: 490, shape: "rect" },
-  { x: 40, y: 1180, w: 520, h: 490, shape: "rect" },
-];
-
-async function loadStripFrame(): Promise<HTMLImageElement | null> {
-  try {
-    return await loadImg("/frames/frame_strip_default.png");
-  } catch (e) {
-    console.error("Failed to load strip frame:", e);
-    return null;
-  }
 }
 
 function drawSlotShape(ctx: CanvasRenderingContext2D, slot: Slot) {
