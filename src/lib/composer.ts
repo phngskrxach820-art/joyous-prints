@@ -114,6 +114,7 @@ function drawSlotShape(ctx: CanvasRenderingContext2D, slot: Slot) {
 export async function renderLayoutA(
   photos: string[],
   filter: string = "none",
+  _designId?: string,
 ): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1240;
