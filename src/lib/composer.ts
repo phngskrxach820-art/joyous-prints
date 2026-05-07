@@ -109,13 +109,13 @@ export async function renderLayoutA(photos: string[], filter: string = "none"): 
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-  const imgs = await Promise.all(photos.slice(0, 3).map(loadImg));
+  const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
 
   STRIP_SLOTS_LEFT.forEach((slot, i) => {
-    if (imgs[i]) drawCoverFiltered(ctx, imgs[i], slot.x, slot.y, slot.w, slot.h, filter);
+    if (imgs[i]) drawSlotWithFilter(ctx, imgs[i], slot, filter);
   });
   STRIP_SLOTS_RIGHT.forEach((slot, i) => {
-    if (imgs[i]) drawCoverFiltered(ctx, imgs[i], slot.x, slot.y, slot.w, slot.h, filter);
+    if (imgs[i]) drawSlotWithFilter(ctx, imgs[i], slot, filter);
   });
 
   const frame = await loadFramePNG("strip");
