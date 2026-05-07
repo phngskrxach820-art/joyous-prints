@@ -163,7 +163,7 @@ export async function renderLayoutA(
 }
 
 /** Layout B — เต็มแผ่น 4x6 — 1844x1240 landscape, 4 portrait photos in a row */
-export async function renderLayoutB(photos: string[], filter: string = "none", _designId?: string): Promise<Blob> {
+export async function renderLayoutB(photos: string[], filter: string = "none", designId?: string): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1844;
   canvas.height = 1240;
@@ -190,8 +190,8 @@ export async function renderLayoutB(photos: string[], filter: string = "none", _
   ctx.textBaseline = "bottom";
   ctx.fillText(WATERMARK, 1820, 1225);
   ctx.restore();
-  // Frame overlay LAST (transparent PNG, full sheet)
-  const frame = await loadFrame();
+  // Frame overlay LAST (transparent PNG, full sheet) — uses selected design
+  const frame = await loadFrameForDesign("B", designId);
   if (frame) {
     ctx.drawImage(frame, 0, 0, 1844, 1240);
   } else {
