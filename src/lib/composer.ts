@@ -114,6 +114,7 @@ function drawSlotShape(ctx: CanvasRenderingContext2D, slot: Slot) {
 export async function renderLayoutA(
   photos: string[],
   filter: string = "none",
+  _designId?: string,
 ): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1240;
@@ -132,11 +133,15 @@ export async function renderLayoutA(
 
   // 3. 3 equal slots per strip; right strip offset by +640
   const LEFT_SLOTS: Slot[] = [
-    { x: 40, y: 140,  w: 520, h: 490, shape: "rect" },
-    { x: 40, y: 660,  w: 520, h: 490, shape: "rect" },
-    { x: 40, y: 1180, w: 520, h: 490, shape: "rect" },
+    { x: 40,  y: 140,  w: 520, h: 490, shape: "rect" },
+    { x: 40,  y: 650,  w: 520, h: 490, shape: "rect" },
+    { x: 40,  y: 1160, w: 520, h: 490, shape: "rect" },
   ];
-  const RIGHT_SLOTS: Slot[] = LEFT_SLOTS.map((s) => ({ ...s, x: s.x + 640 }));
+  const RIGHT_SLOTS: Slot[] = [
+    { x: 680, y: 140,  w: 520, h: 490, shape: "rect" },
+    { x: 680, y: 650,  w: 520, h: 490, shape: "rect" },
+    { x: 680, y: 1160, w: 520, h: 490, shape: "rect" },
+  ];
 
   // 4. Draw photos into slots (3 per strip)
   const allSlots = [...LEFT_SLOTS, ...RIGHT_SLOTS];
@@ -171,7 +176,7 @@ export async function renderLayoutA(
 }
 
 /** Layout B — เต็มแผ่น 4x6 — 1844x1240 landscape, 4 portrait photos in a row */
-export async function renderLayoutB(photos: string[], filter: string = "none"): Promise<Blob> {
+export async function renderLayoutB(photos: string[], filter: string = "none", _designId?: string): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1844;
   canvas.height = 1240;
@@ -276,10 +281,10 @@ function canvasToBlob(c: HTMLCanvasElement, type = "image/jpeg", q = 0.97): Prom
   );
 }
 
-export async function renderLayout(layout: LayoutId, photos: string[], filter: string = "none"): Promise<Blob> {
+export async function renderLayout(layout: LayoutId, photos: string[], filter: string = "none", designId?: string): Promise<Blob> {
   switch (layout) {
-    case "A": return renderLayoutA(photos, filter);
-    case "B": return renderLayoutB(photos, filter);
+    case "A": return renderLayoutA(photos, filter, designId);
+    case "B": return renderLayoutB(photos, filter, designId);
     case "C": return renderLayoutC(photos, filter);
     case "D": return renderLayoutD(photos, filter);
   }

@@ -4,15 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { CaptureFlow } from "@/components/CaptureFlow";
-import { LAYOUTS, renderLayout, renderLayoutD, type LayoutId } from "@/lib/composer";
+import { LAYOUTS, renderLayout, type LayoutId } from "@/lib/composer";
 import { loadConfig } from "@/lib/admin-config";
 import { paymentSuccess, chime } from "@/lib/audio";
 import { ThemePicker } from "@/components/ThemePicker";
 import { FilterPicker } from "@/components/FilterPicker";
 import { FILTERS, type DesignId, type FilterKey } from "@/components/PhotoboothOverlay";
 import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining, consumePromo } from "@/lib/promo";
-import QRCode from "qrcode";
-import { uploadToLan, getLanBaseUrl } from "@/lib/lan-server";
 import { enqueuePrint, setPrinter } from "@/lib/print-queue";
 
 export const Route = createFileRoute("/session/$id")({
@@ -31,10 +29,7 @@ function SessionPage() {
 
   const [confirming, setConfirming] = useState(false);
   const [paid, setPaid] = useState(false);
-  const [photoOutputUrl, setPhotoOutputUrl] = useState<string>("");
-  const [gifOutputUrl, setGifOutputUrl] = useState<string>("");
-  const [photoQr, setPhotoQr] = useState<string>("");
-  const [gifQr, setGifQr] = useState<string>("");
+  const [photoOutputBlob, setPhotoOutputBlob] = useState<Blob | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrintedOnce, setHasPrintedOnce] = useState(false);
   const [printStatus, setPrintStatus] = useState<string>("");
@@ -116,28 +111,42 @@ function SessionPage() {
     }
   }
 
-  // Background: render the JPEG collage and the GIF, then upload to the LOCAL LAN server.
-  async function backgroundRender(l: LayoutId, urls: string[], filterCss: string) {
-    const photoTask = (async () => {
-      const blob = await renderLayout(l, urls, filterCss);
-      return uploadToLan(id, "photo", blob);
-    })();
-    const gifTask = (async () => {
-      const blob = await renderLayoutD(urls, filterCss);
-      return uploadToLan(id, "gif", blob);
-    })();
-    return Promise.all([photoTask, gifTask]);
+  // Background: render the JPEG collage with timeout + retry. GIF rendered too (kept for later use).
+  function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+    return new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error("render timeout")), ms);
+      p.then((v) => { clearTimeout(t); res(v); }).catch((e) => { clearTimeout(t); rej(e); });
+    });
+  }
+
+  async function backgroundRender(l: LayoutId, urls: string[], filterCss: string): Promise<Blob | null> {
+    const tryRender = (timeoutMs: number) => {
+      const effectiveDesignId = designId ?? (l === "A" ? "strip-bunny-cute" : "full-korean-cafe");
+      return withTimeout(renderLayout(l, urls, filterCss, effectiveDesignId), timeoutMs);
+    };
+    try {
+      return await tryRender(15000);
+    } catch (e) {
+      console.error("render attempt 1 failed", e);
+      try {
+        return await tryRender(10000);
+      } catch (e2) {
+        console.error("render attempt 2 failed", e2);
+        try {
+          return await renderLayout(l, urls, "none", designId ?? (l === "A" ? "strip-bunny-cute" : "full-korean-cafe"));
+        } catch (e3) {
+          console.error("final fallback render failed", e3);
+          return null;
+        }
+      }
+    }
   }
 
   async function confirmPayment() {
     setConfirming(true);
     await supabase.from("sessions").update({ payment_status: "checking" }).eq("id", id);
 
-    // Kick off render in background while the 10s "verifying" UX runs.
-    const renderPromise = backgroundRender(layout, photoUrls, FILTERS[filter]).catch((e) => {
-      console.error("render failed", e);
-      return null;
-    });
+    const renderPromise = backgroundRender(layout, photoUrls, FILTERS[filter]);
 
     setTimeout(async () => {
       await supabase.from("sessions").update({ payment_status: "paid" }).eq("id", id);
@@ -145,28 +154,18 @@ function SessionPage() {
       setPaid(true);
       paymentSuccess();
       setStep("rendering");
-      const result = await renderPromise;
-      if (!result) {
-        toast.error("สร้างรูปไม่สำเร็จ");
+      const blob = await renderPromise;
+      if (!blob) {
+        // Proceed silently to delivery; allow user to retry print.
+        setStep("delivery");
         return;
       }
-      const [photoUrl, gifUrl] = result;
-      setPhotoOutputUrl(photoUrl);
-      setGifOutputUrl(gifUrl);
-      await supabase.from("sessions").update({ output_url: photoUrl }).eq("id", id);
-
-      const lanBase = await getLanBaseUrl();
-      const [pq, gq] = await Promise.all([
-        QRCode.toDataURL(`${lanBase}/d/${id}/photo`, { margin: 1, width: 360, errorCorrectionLevel: "H" }),
-        QRCode.toDataURL(`${lanBase}/d/${id}/gif`, { margin: 1, width: 360, errorCorrectionLevel: "H" }),
-      ]);
-      setPhotoQr(pq);
-      setGifQr(gq);
+      setPhotoOutputBlob(blob);
       setStep("delivery");
 
       // Auto-print based on copies chosen
       try {
-        const canvas = await urlToCanvas(photoUrl);
+        const canvas = await blobToCanvas(blob);
         setIsPrinting(true);
         setHasPrintedOnce(true);
         await batchPrint(canvas, copies);
@@ -177,6 +176,12 @@ function SessionPage() {
       }
     }, 10000);
   }
+
+  function blobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
+    const url = URL.createObjectURL(blob);
+    return urlToCanvas(url).finally(() => URL.revokeObjectURL(url));
+  }
+
 
   function urlToCanvas(url: string): Promise<HTMLCanvasElement> {
     return new Promise((resolve, reject) => {
@@ -262,7 +267,8 @@ function SessionPage() {
 
   async function doPrintOnce() {
     try {
-      const canvas = await urlToCanvas(photoOutputUrl);
+      if (!photoOutputBlob) throw new Error("no rendered image");
+      const canvas = await blobToCanvas(photoOutputBlob);
       setPrinter(printCanvas);
       enqueuePrint(canvas, id, 1, layout);
       setTimeout(markPrintFinished, 3000);
@@ -318,6 +324,7 @@ function SessionPage() {
         <FilterPicker
           photos={photoUrls}
           initialFilter={filter}
+          layout={layout === "B" ? "B" : "A"}
           onNext={(f) => { setFilter(f); setStep("payment"); }}
           onBack={() => setStep("capture")}
         />
@@ -436,7 +443,8 @@ function SessionPage() {
       {step === "rendering" && (
         <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
           <Sparkles className="h-12 w-12 animate-pulse-soft text-primary" />
-          <p className="text-lg">กำลังจัดรูปสวยๆ ให้นะ...</p>
+          <p className="text-lg">กำลังสั่งปริ้น...รอสักครู่</p>
+          <p className="text-sm text-muted-foreground">เกือบเสร็จแล้ว ✨</p>
         </div>
       )}
 
@@ -459,28 +467,16 @@ function SessionPage() {
             </p>
           )}
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="p-4 rounded-3xl border border-border bg-card text-center">
-              <p className="font-heading font-bold mb-3">📸 เซฟรูปนิ่ง</p>
-              {photoQr && (
-                <div className="bg-white p-2 rounded-xl inline-block">
-                  <img src={photoQr} alt="QR เซฟรูป" className="w-[200px] h-[200px] block" />
-                </div>
-              )}
-            </div>
-            <div className="p-4 rounded-3xl border border-border bg-card text-center">
-              <p className="font-heading font-bold mb-3">✨ เซฟ GIF</p>
-              {gifQr && (
-                <div className="bg-white p-2 rounded-xl inline-block">
-                  <img src={gifQr} alt="QR เซฟ GIF" className="w-[200px] h-[200px] block" />
-                </div>
-              )}
-            </div>
-          </div>
-
-          <p className="text-center text-muted-foreground mb-6" style={{ fontSize: 12 }}>
-            ⏰ ลิงก์ใช้ได้ 24 ชั่วโมง
-          </p>
+          {!hasPrintedOnce && photoOutputBlob && (
+            <button
+              onClick={handlePrintClick}
+              disabled={isPrinting}
+              style={{ width: "calc(100% - 32px)", marginLeft: 16, marginRight: 16 }}
+              className="h-14 rounded-full bg-primary text-primary-foreground font-semibold text-lg shadow-lg hover:scale-[1.02] transition mb-4 disabled:opacity-60"
+            >
+              🖨️ สั่งพิมพ์
+            </button>
+          )}
 
           <Link
             to="/"
@@ -489,8 +485,6 @@ function SessionPage() {
           >
             🏠 กลับหน้าแรก
           </Link>
-
-          {gifOutputUrl && <link rel="prefetch" href={gifOutputUrl} />}
         </section>
       )}
     </main>
