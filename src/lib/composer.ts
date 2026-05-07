@@ -59,15 +59,38 @@ export const CANVAS_W = 1240;
 export const CANVAS_H = 1844;
 
 const STRIP_SLOTS_LEFT = [
-  { x: 40,  y: 140,  w: 520, h: 490 },
-  { x: 40,  y: 660,  w: 520, h: 490 },
-  { x: 40,  y: 1180, w: 520, h: 490 },
+  { x: 110, y: 390,  w: 413, h: 230 },
+  { x: 110, y: 684,  w: 413, h: 230 },
+  { x: 110, y: 1004, w: 413, h: 231 },
+  { x: 110, y: 1285, w: 413, h: 232 },
 ];
 const STRIP_SLOTS_RIGHT = [
-  { x: 680, y: 140,  w: 520, h: 490 },
-  { x: 680, y: 660,  w: 520, h: 490 },
-  { x: 680, y: 1180, w: 520, h: 490 },
+  { x: 735, y: 389,  w: 414, h: 232 },
+  { x: 735, y: 684,  w: 414, h: 230 },
+  { x: 735, y: 1004, w: 414, h: 231 },
+  { x: 735, y: 1286, w: 415, h: 231 },
 ];
+
+function drawSlotWithFilter(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  slot: { x: number; y: number; w: number; h: number },
+  filter: string,
+) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(slot.x, slot.y, slot.w, slot.h);
+  ctx.clip();
+  if (filter && filter !== "none") ctx.filter = filter;
+  const ratio = Math.max(slot.w / img.naturalWidth, slot.h / img.naturalHeight);
+  const nw = img.naturalWidth * ratio;
+  const nh = img.naturalHeight * ratio;
+  const ox = slot.x + (slot.w - nw) / 2;
+  const oy = slot.y + (slot.h - nh) / 2;
+  ctx.drawImage(img, ox, oy, nw, nh);
+  ctx.filter = "none";
+  ctx.restore();
+}
 const FULL_SLOTS = [
   { x: 40,  y: 60,   w: 560, h: 840 },
   { x: 640, y: 60,   w: 560, h: 840 },
