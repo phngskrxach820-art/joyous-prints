@@ -1,5 +1,5 @@
 import { ArrowLeft, Check } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PhotoboothOverlay, {
   FULL_DESIGNS,
   STRIP_DESIGNS,
@@ -7,6 +7,7 @@ import PhotoboothOverlay, {
   type DesignId,
   type FilterKey,
 } from "@/components/PhotoboothOverlay";
+import { frameUrlForDesign, frameExists } from "@/lib/design-frames";
 
 export type ThemePickResult = {
   layout: "A" | "B";
