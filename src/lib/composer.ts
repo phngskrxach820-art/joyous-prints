@@ -1,7 +1,5 @@
 // Photo composition for layouts A/B/C/D
 import GIF from "gif.js";
-import { frameUrlForDesign } from "@/lib/design-frames";
-import type { DesignId } from "@/components/PhotoboothOverlay";
 
 export type LayoutId = "A" | "B" | "C" | "D";
 
@@ -17,13 +15,19 @@ async function loadImg(src: string): Promise<HTMLImageElement> {
   });
 }
 
+async function loadFramePNG(format: "strip" | "full"): Promise<HTMLImageElement | null> {
+  const path = format === "strip" ? "/frames/frame_strip.png" : "/frames/frame_full.png";
+  try {
+    return await loadImg(path);
+  } catch {
+    return null;
+  }
+}
+
 function drawCover(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
+  x: number, y: number, w: number, h: number,
 ) {
   const ratio = Math.max(w / img.width, h / img.height);
   const nw = img.width * ratio;
@@ -41,10 +45,7 @@ function drawCover(
 function drawCoverFiltered(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
+  x: number, y: number, w: number, h: number,
   filter: string,
 ) {
   const prev = ctx.filter;
@@ -53,139 +54,66 @@ function drawCoverFiltered(
   ctx.filter = prev;
 }
 
-function watermark(ctx: CanvasRenderingContext2D, x: number, y: number, align: CanvasTextAlign = "center") {
-  ctx.save();
-  ctx.font = "500 22px 'Noto Sans Thai', 'Inter', sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.7)";
-  ctx.textAlign = align;
-  ctx.textBaseline = "bottom";
-  ctx.fillText(WATERMARK, x, y);
-  ctx.restore();
-}
-
-// Print sheet 100x148mm portrait → ~1240x1835 px @ ~315dpi
-export const PRINT_W_MM = 100;
-export const PRINT_H_MM = 148;
-export const PRINT_ASPECT = PRINT_W_MM / PRINT_H_MM;
+// Print sheet 100x148mm portrait
 export const CANVAS_W = 1240;
-export const CANVAS_H = Math.round(CANVAS_W / PRINT_ASPECT); // 1835
+export const CANVAS_H = 1844;
 
-async function loadFrameForDesign(format: "A" | "B", designId?: string): Promise<HTMLImageElement | null> {
-  const { primary, fallback } = frameUrlForDesign(designId as DesignId | undefined);
-  // Strip (format A) no longer has a default. Full (B) falls back to default.
-  const defaultFile = format === "B" ? "/frames/frame_full_default.png" : null;
-  const candidates = [primary, fallback, defaultFile].filter((s): s is string => !!s);
-  for (const src of candidates) {
-    try {
-      return await loadImg(src);
-    } catch {
-      // try next
-    }
-  }
-  return null;
-}
+const STRIP_SLOTS_LEFT = [
+  { x: 40,  y: 140,  w: 520, h: 490 },
+  { x: 40,  y: 660,  w: 520, h: 490 },
+  { x: 40,  y: 1180, w: 520, h: 490 },
+];
+const STRIP_SLOTS_RIGHT = [
+  { x: 680, y: 140,  w: 520, h: 490 },
+  { x: 680, y: 660,  w: 520, h: 490 },
+  { x: 680, y: 1180, w: 520, h: 490 },
+];
+const FULL_SLOTS = [
+  { x: 40,  y: 60,   w: 560, h: 840 },
+  { x: 640, y: 60,   w: 560, h: 840 },
+  { x: 40,  y: 940,  w: 560, h: 840 },
+  { x: 640, y: 940,  w: 560, h: 840 },
+];
 
-type Slot = { x: number; y: number; w: number; h: number; shape: "oval" | "rect" };
-
-function drawSlotShape(ctx: CanvasRenderingContext2D, slot: Slot) {
-  ctx.beginPath();
-  if (slot.shape === "oval") {
-    const cx = slot.x + slot.w / 2;
-    const cy = slot.y + slot.h / 2;
-    ctx.ellipse(cx, cy, slot.w / 2, slot.h / 2, 0, 0, Math.PI * 2);
-  } else {
-    const r = 12;
-    const { x, y, w, h } = slot;
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-}
-
-/** Layout A — 2x6 strip with booth1 frame, 8 slots (4 photos x 2 columns) */
-export async function renderLayoutA(
-  photos: string[],
-  filter: string = "none",
-  designId?: string,
-): Promise<Blob> {
+/** Layout A — 2x6 strip. 3 photos x 2 columns. */
+export async function renderLayoutA(photos: string[], filter: string = "none"): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-
-  // 1. White background
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-  // 2. Load 3 photos and frame for selected design
   const imgs = await Promise.all(photos.slice(0, 3).map(loadImg));
-  const frame = await loadFrameForDesign("A", designId);
 
-  // 3. Two strips side-by-side, 3 photo slots each, on a 1240x1835 sheet.
-  const stripW = 520;
-  const stripH = Math.floor((CANVAS_H - 40 * 2) / 3);
-  const yTop = 40;
-  const xLeft = 40;
-  const xRight = 680;
-  const LEFT_SLOTS: Slot[] = [0, 1, 2].map((i) => ({
-    x: xLeft, y: yTop + i * stripH, w: stripW, h: stripH, shape: "rect",
-  }));
-  const RIGHT_SLOTS: Slot[] = [0, 1, 2].map((i) => ({
-    x: xRight, y: yTop + i * stripH, w: stripW, h: stripH, shape: "rect",
-  }));
-
-  // 4. Draw photos into slots (3 per strip)
-  const allSlots = [...LEFT_SLOTS, ...RIGHT_SLOTS];
-  allSlots.forEach((slot, i) => {
-    const img = imgs[i % 3];
-    if (!img) return;
-    ctx.save();
-    drawSlotShape(ctx, slot);
-    ctx.clip();
-    if (filter && filter !== "none") {
-      ctx.filter = filter;
-    }
-    const ratio = Math.max(
-      slot.w / img.naturalWidth,
-      slot.h / img.naturalHeight,
-    );
-    const nw = img.naturalWidth * ratio;
-    const nh = img.naturalHeight * ratio;
-    const ox = slot.x + (slot.w - nw) / 2;
-    const oy = slot.y + (slot.h - nh) / 2;
-    ctx.drawImage(img, ox, oy, nw, nh);
-    ctx.filter = "none";
-    ctx.restore();
+  STRIP_SLOTS_LEFT.forEach((slot, i) => {
+    if (imgs[i]) drawCoverFiltered(ctx, imgs[i], slot.x, slot.y, slot.w, slot.h, filter);
+  });
+  STRIP_SLOTS_RIGHT.forEach((slot, i) => {
+    if (imgs[i]) drawCoverFiltered(ctx, imgs[i], slot.x, slot.y, slot.w, slot.h, filter);
   });
 
-  // 5. Center dotted cut guide when no PNG frame supplies one
-  if (!frame) {
-    ctx.save();
-    ctx.strokeStyle = "rgba(0,0,0,0.35)";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([10, 8]);
-    ctx.beginPath();
-    ctx.moveTo(CANVAS_W / 2, 20);
-    ctx.lineTo(CANVAS_W / 2, CANVAS_H - 20);
-    ctx.stroke();
-    ctx.restore();
-  }
+  const frame = await loadFramePNG("strip");
+  if (frame) ctx.drawImage(frame, 0, 0, CANVAS_W, CANVAS_H);
 
-  // 6. Draw frame ONCE on top (full canvas size)
-  if (frame) {
-    ctx.drawImage(frame, 0, 0, CANVAS_W, CANVAS_H);
-  }
+  // LAST: thin dashed cut line
+  ctx.save();
+  ctx.setLineDash([10, 8]);
+  ctx.strokeStyle = "rgba(150,150,150,0.5)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(620, 0);
+  ctx.lineTo(620, CANVAS_H);
+  ctx.stroke();
+  ctx.restore();
 
-  return canvasToBlob(canvas, "image/jpeg", 1.0);
+  return canvasToBlob(canvas);
 }
 
-/** Layout B — เต็มแผ่น 4x6 portrait — 1240x1835, 4 photos in 2x2 grid */
-export async function renderLayoutB(photos: string[], filter: string = "none", designId?: string): Promise<Blob> {
+/** Layout B — full 4x6 portrait, 4 photos in 2x2. */
+export async function renderLayoutB(photos: string[], filter: string = "none"): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
@@ -193,32 +121,15 @@ export async function renderLayoutB(photos: string[], filter: string = "none", d
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
-  // 2x2 grid on portrait sheet
-  const marginX = 40;
-  const marginY = 40;
-  const gap = 20;
-  const slotW = (CANVAS_W - marginX * 2 - gap) / 2;
-  const slotH = (CANVAS_H - marginY * 2 - gap) / 2;
-  for (let i = 0; i < 4; i++) {
-    const col = i % 2;
-    const row = Math.floor(i / 2);
-    const x = marginX + col * (slotW + gap);
-    const y = marginY + row * (slotH + gap);
-    drawCoverFiltered(ctx, imgs[i], x, y, slotW, slotH, filter);
-  }
-  // Frame overlay LAST (transparent PNG, full sheet) — uses selected design
-  const frame = await loadFrameForDesign("B", designId);
-  if (frame) {
-    ctx.drawImage(frame, 0, 0, CANVAS_W, CANVAS_H);
-  } else {
-    ctx.strokeStyle = "rgba(0,0,0,0.08)";
-    ctx.lineWidth = 4;
-    ctx.strokeRect(2, 2, CANVAS_W - 4, CANVAS_H - 4);
-  }
+  FULL_SLOTS.forEach((slot, i) => {
+    if (imgs[i]) drawCoverFiltered(ctx, imgs[i], slot.x, slot.y, slot.w, slot.h, filter);
+  });
+  const frame = await loadFramePNG("full");
+  if (frame) ctx.drawImage(frame, 0, 0, CANVAS_W, CANVAS_H);
   return canvasToBlob(canvas);
 }
 
-/** Layout C — ฟิล์มสตริป — 1240x1844 portrait */
+/** Layout C — film strip (kept) */
 export async function renderLayoutC(photos: string[], filter: string = "none"): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = 1240;
@@ -226,7 +137,6 @@ export async function renderLayoutC(photos: string[], filter: string = "none"): 
   const ctx = canvas.getContext("2d")!;
   ctx.fillStyle = "#111111";
   ctx.fillRect(0, 0, 1240, 1844);
-  // White border container
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(40, 40, 1160, 1764);
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
@@ -234,7 +144,6 @@ export async function renderLayoutC(photos: string[], filter: string = "none"): 
   drawCoverFiltered(ctx, imgs[1], 40, 440, 1160, 380, filter);
   drawCoverFiltered(ctx, imgs[2], 40, 840, 1160, 380, filter);
   drawCoverFiltered(ctx, imgs[3], 40, 1240, 1160, 380, filter);
-  // Watermark on bottom white area
   ctx.save();
   ctx.font = "500 22px 'Noto Sans Thai', sans-serif";
   ctx.fillStyle = "rgba(0,0,0,0.6)";
@@ -245,25 +154,17 @@ export async function renderLayoutC(photos: string[], filter: string = "none"): 
   return canvasToBlob(canvas);
 }
 
-/** Layout D — GIF 800x600, 150ms/frame, looped */
+/** Layout D — GIF */
 export async function renderLayoutD(photos: string[], filter: string = "none"): Promise<Blob> {
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
-  const gif = new GIF({
-    workers: 2,
-    quality: 10,
-    width: 800,
-    height: 600,
-    workerScript: "/gif.worker.js",
-  });
+  const gif = new GIF({ workers: 2, quality: 10, width: 800, height: 600, workerScript: "/gif.worker.js" });
   for (const img of imgs) {
     const c = document.createElement("canvas");
-    c.width = 800;
-    c.height = 600;
+    c.width = 800; c.height = 600;
     const cx = c.getContext("2d")!;
     cx.fillStyle = "#000";
     cx.fillRect(0, 0, 800, 600);
     drawCoverFiltered(cx, img, 0, 0, 800, 600, filter);
-    // Watermark
     cx.font = "500 18px 'Noto Sans Thai', sans-serif";
     cx.fillStyle = "rgba(255,255,255,0.7)";
     cx.textAlign = "right";
@@ -284,30 +185,16 @@ function canvasToBlob(c: HTMLCanvasElement, type = "image/jpeg", q = 0.97): Prom
   );
 }
 
-export async function renderLayout(layout: LayoutId, photos: string[], filter: string = "none", designId?: string): Promise<Blob> {
+export async function renderLayout(layout: LayoutId, photos: string[], filter: string = "none"): Promise<Blob> {
   switch (layout) {
-    case "A": return renderLayoutA(photos, filter, designId);
-    case "B": return renderLayoutB(photos, filter, designId);
+    case "A": return renderLayoutA(photos, filter);
+    case "B": return renderLayoutB(photos, filter);
     case "C": return renderLayoutC(photos, filter);
     case "D": return renderLayoutD(photos, filter);
   }
 }
 
 export const LAYOUTS = [
-  {
-    id: "A" as const,
-    label: "แบ่งให้เพื่อน 💑 (2x6)",
-    emoji: "💑",
-    desc: "ถ่าย 3 รูป ได้ 2 แถบเหมือนกัน แบ่งกับเพื่อนได้เลย",
-    needsCount: 3,
-    popular: true,
-  },
-  {
-    id: "B" as const,
-    label: "เต็มแผ่น 4x6 🖼️",
-    emoji: "🖼️",
-    desc: "ถ่าย 4 รูป เต็มแผ่น 4x6",
-    recommended: true,
-    needsCount: 4,
-  },
+  { id: "A" as const, label: "แบบแถบ 2x6 💑", emoji: "💑", desc: "ถ่าย 3 รูป ได้ 2 แถบตัดแบ่งได้", needsCount: 3, popular: true },
+  { id: "B" as const, label: "เต็มแผ่น 4x6 🖼️", emoji: "🖼️", desc: "ถ่าย 4 รูป เต็มแผ่น", recommended: true, needsCount: 4 },
 ];

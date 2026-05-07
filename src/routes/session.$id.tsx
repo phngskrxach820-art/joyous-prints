@@ -7,9 +7,8 @@ import { CaptureFlow } from "@/components/CaptureFlow";
 import { LAYOUTS, renderLayout, type LayoutId } from "@/lib/composer";
 import { loadConfig } from "@/lib/admin-config";
 import { paymentSuccess, chime } from "@/lib/audio";
-import { ThemePicker } from "@/components/ThemePicker";
 import { FilterPicker } from "@/components/FilterPicker";
-import { FILTERS, type DesignId, type FilterKey } from "@/components/PhotoboothOverlay";
+import { FILTERS, type FilterKey } from "@/lib/filters";
 import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining, consumePromo } from "@/lib/promo";
 import { enqueuePrint, setPrinter } from "@/lib/print-queue";
 
@@ -17,15 +16,73 @@ export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
 });
 
-type Step = "theme" | "capture" | "uploading" | "filter" | "payment" | "rendering" | "delivery";
+type Step = "format" | "capture" | "uploading" | "filter" | "payment" | "rendering" | "delivery";
+
+function StripIllustration() {
+  return (
+    <svg viewBox="0 0 200 600" style={{ width: 120, height: "auto" }}>
+      <rect x="0" y="0" width="200" height="600" fill="#f5f5f5" stroke="#ddd" strokeWidth="2" rx="8" />
+      <rect x="12" y="20" width="78" height="160" fill="#e0e0e0" rx="4" />
+      <rect x="12" y="195" width="78" height="160" fill="#e0e0e0" rx="4" />
+      <rect x="12" y="370" width="78" height="160" fill="#e0e0e0" rx="4" />
+      <line x1="100" y1="10" x2="100" y2="590" stroke="#ccc" strokeWidth="1" strokeDasharray="4 3" />
+      <rect x="110" y="20" width="78" height="160" fill="#e0e0e0" rx="4" />
+      <rect x="110" y="195" width="78" height="160" fill="#e0e0e0" rx="4" />
+      <rect x="110" y="370" width="78" height="160" fill="#e0e0e0" rx="4" />
+      <text x="100" y="560" textAnchor="middle" fontSize="14" fill="#999">✂️ ตัดแบ่งได้</text>
+    </svg>
+  );
+}
+
+function FullIllustration() {
+  return (
+    <svg viewBox="0 0 200 296" style={{ width: 120, height: "auto" }}>
+      <rect x="0" y="0" width="200" height="296" fill="#f5f5f5" stroke="#ddd" strokeWidth="2" rx="8" />
+      <rect x="10" y="10" width="85" height="128" fill="#e0e0e0" rx="4" />
+      <rect x="105" y="10" width="85" height="128" fill="#e0e0e0" rx="4" />
+      <rect x="10" y="148" width="85" height="128" fill="#e0e0e0" rx="4" />
+      <rect x="105" y="148" width="85" height="128" fill="#e0e0e0" rx="4" />
+      <text x="100" y="288" textAnchor="middle" fontSize="11" fill="#999">เต็มแผ่น</text>
+    </svg>
+  );
+}
+
+function FormatSelect({ onPick, onBack }: { onPick: (l: LayoutId) => void; onBack: () => void }) {
+  const cards: { id: LayoutId; title: string; desc: string; render: () => React.ReactNode }[] = [
+    { id: "A", title: "แบบแถบ 2x6 💑", desc: "ถ่าย 3 รูป ได้ 2 แถบตัดแบ่งได้", render: () => <StripIllustration /> },
+    { id: "B", title: "เต็มแผ่น 4x6 🖼️", desc: "ถ่าย 4 รูป เต็มแผ่น", render: () => <FullIllustration /> },
+  ];
+  return (
+    <section className="animate-fade-in max-w-3xl mx-auto">
+      <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <ArrowLeft className="h-4 w-4" /> กลับ
+      </button>
+      <h1 className="text-3xl font-heading font-bold text-center mb-2">เลือกแบบที่ชอบ</h1>
+      <p className="text-center text-muted-foreground mb-6">Pick your format</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {cards.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => onPick(c.id)}
+            className="rounded-3xl border-2 border-border bg-card p-5 text-left hover:border-primary hover:scale-[1.02] transition flex flex-col items-center"
+          >
+            <div className="mb-4 flex items-center justify-center">{c.render()}</div>
+            <h3 className="font-heading font-bold text-lg mb-1 text-center">{c.title}</h3>
+            <p className="text-sm text-muted-foreground text-center">{c.desc}</p>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function SessionPage() {
   const { id } = Route.useParams();
-  const [step, setStep] = useState<Step>("theme");
+  const [step, setStep] = useState<Step>("format");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [layout, setLayout] = useState<LayoutId>("A");
-  const [designId, setDesignId] = useState<DesignId>("strip-korean-mono");
   const [filter, setFilter] = useState<FilterKey>("none");
+  const [previewUrl, setPreviewUrl] = useState<string>("");
 
   const [confirming, setConfirming] = useState(false);
   const [paid, setPaid] = useState(false);
@@ -36,7 +93,6 @@ function SessionPage() {
   const upsellIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const upsellOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Reviewer promo
   const [reviewStory, setReviewStory] = useState(false);
   const [reviewClip, setReviewClip] = useState(false);
   const [reviewHandle, setReviewHandle] = useState("");
@@ -58,17 +114,10 @@ function SessionPage() {
   const price = copies === 2 ? basePrice + REPRINT_PRICE : basePrice;
 
   function activateReviewerPromo() {
-    if (!reviewStory && !reviewClip) {
-      toast.error("เลือกอย่างน้อย 1 ข้อนะ");
-      return;
-    }
+    if (!reviewStory && !reviewClip) { toast.error("เลือกอย่างน้อย 1 ข้อนะ"); return; }
     setReviewerActive(true);
     const reviewType = reviewStory && reviewClip ? "both" : reviewStory ? "story_tag" : "clip";
-    supabase
-      .from("sessions")
-      .update({ review_type: reviewType, review_handle: reviewHandle || null })
-      .eq("id", id)
-      .then(() => {});
+    supabase.from("sessions").update({ review_type: reviewType, review_handle: reviewHandle || null }).eq("id", id).then(() => {});
     chime();
     toast.success("✅ แชร์ปุ๊บ ลดปั๊บ! ราคา " + PROMO_PRICE + ".- 🎉");
   }
@@ -79,10 +128,7 @@ function SessionPage() {
       const urls: string[] = [];
       for (let i = 0; i < blobs.length; i++) {
         const path = `${id}/shot-${i + 1}-${Date.now()}.jpg`;
-        const { error } = await supabase.storage.from("photos").upload(path, blobs[i], {
-          contentType: "image/jpeg",
-          upsert: true,
-        });
+        const { error } = await supabase.storage.from("photos").upload(path, blobs[i], { contentType: "image/jpeg", upsert: true });
         if (error) throw error;
         const { data } = supabase.storage.from("photos").getPublicUrl(path);
         urls.push(data.publicUrl);
@@ -97,21 +143,16 @@ function SessionPage() {
     }
   }
 
-  async function handleThemePick(result: { layout: "A" | "B"; designId: DesignId; filter: FilterKey }) {
-    setLayout(result.layout);
-    setDesignId(result.designId);
-    setFilter(result.filter);
-    await supabase.from("sessions").update({ layout: result.layout }).eq("id", id);
+  async function handleFormatPick(l: LayoutId) {
+    setLayout(l);
+    await supabase.from("sessions").update({ layout: l }).eq("id", id);
     setStep("capture");
   }
 
   function backFromCapture() {
-    if (confirm("เริ่มถ่ายใหม่เลยนะ?")) {
-      setStep("theme");
-    }
+    if (confirm("เริ่มถ่ายใหม่เลยนะ?")) setStep("format");
   }
 
-  // Background: render the JPEG collage with timeout + retry. GIF rendered too (kept for later use).
   function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
     return new Promise((res, rej) => {
       const t = setTimeout(() => rej(new Error("render timeout")), ms);
@@ -120,34 +161,38 @@ function SessionPage() {
   }
 
   async function backgroundRender(l: LayoutId, urls: string[], filterCss: string): Promise<Blob | null> {
-    const tryRender = (timeoutMs: number) => {
-      const effectiveDesignId = designId ?? (l === "A" ? "strip-bunny-cute" : "full-korean-cafe");
-      return withTimeout(renderLayout(l, urls, filterCss, effectiveDesignId), timeoutMs);
-    };
-    try {
-      return await tryRender(15000);
-    } catch (e) {
+    const tryRender = (timeoutMs: number) => withTimeout(renderLayout(l, urls, filterCss), timeoutMs);
+    try { return await tryRender(15000); }
+    catch (e) {
       console.error("render attempt 1 failed", e);
-      try {
-        return await tryRender(10000);
-      } catch (e2) {
+      try { return await tryRender(10000); }
+      catch (e2) {
         console.error("render attempt 2 failed", e2);
-        try {
-          return await renderLayout(l, urls, "none", designId ?? (l === "A" ? "strip-bunny-cute" : "full-korean-cafe"));
-        } catch (e3) {
-          console.error("final fallback render failed", e3);
-          return null;
-        }
+        try { return await renderLayout(l, urls, "none"); }
+        catch (e3) { console.error("final fallback render failed", e3); return null; }
       }
     }
   }
 
+  // Build preview thumbnail when entering payment step
+  useEffect(() => {
+    if (step !== "payment" || photoUrls.length === 0) return;
+    let cancelled = false;
+    let prev = "";
+    renderLayout(layout, photoUrls, FILTERS[filter])
+      .then((blob) => {
+        if (cancelled) return;
+        const u = URL.createObjectURL(blob);
+        setPreviewUrl((old) => { prev = old; return u; });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; if (prev) URL.revokeObjectURL(prev); };
+  }, [step, layout, photoUrls, filter]);
+
   async function confirmPayment() {
     setConfirming(true);
     await supabase.from("sessions").update({ payment_status: "checking" }).eq("id", id);
-
     const renderPromise = backgroundRender(layout, photoUrls, FILTERS[filter]);
-
     setTimeout(async () => {
       await supabase.from("sessions").update({ payment_status: "paid" }).eq("id", id);
       if (isPromo) consumePromo();
@@ -155,25 +200,16 @@ function SessionPage() {
       paymentSuccess();
       setStep("rendering");
       const blob = await renderPromise;
-      if (!blob) {
-        // Proceed silently to delivery; allow user to retry print.
-        setStep("delivery");
-        return;
-      }
+      if (!blob) { setStep("delivery"); return; }
       setPhotoOutputBlob(blob);
       setStep("delivery");
-
-      // Auto-print based on copies chosen
       try {
         const canvas = await blobToCanvas(blob);
         setIsPrinting(true);
         setHasPrintedOnce(true);
         await batchPrint(canvas, copies);
         setIsPrinting(false);
-      } catch (e) {
-        console.error(e);
-        setIsPrinting(false);
-      }
+      } catch (e) { console.error(e); setIsPrinting(false); }
     }, 10000);
   }
 
@@ -181,7 +217,6 @@ function SessionPage() {
     const url = URL.createObjectURL(blob);
     return urlToCanvas(url).finally(() => URL.revokeObjectURL(url));
   }
-
 
   function urlToCanvas(url: string): Promise<HTMLCanvasElement> {
     return new Promise((resolve, reject) => {
@@ -206,57 +241,20 @@ function SessionPage() {
     const win = window.open("", "_blank");
     if (!win) return null;
     win.document.write(`<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  @page {
-    size: 100mm 148mm portrait;
-    margin: 0;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  html, body {
-    width: 100mm;
-    height: 148mm;
-    overflow: hidden;
-    background: white;
-  }
-  img {
-    width: 100mm !important;
-    height: 148mm !important;
-    display: block;
-    object-fit: fill;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
-  }
-  @media print {
-    html, body { width: 100mm; height: 148mm; }
-    img { width: 100mm !important; height: 148mm !important; }
-  }
-</style>
-</head>
-<body>
-<img src="${dataUrl}">
-<script>
-  window.addEventListener('load', () => {
-    setTimeout(() => {
-      window.focus();
-      window.print();
-      setTimeout(() => window.close(), 1500);
-    }, 600);
-  });
-<\/script>
-</body>
-</html>`);
+<html><head><meta charset="utf-8"><style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  @page{size:100mm 148mm portrait;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html,body{width:100mm;height:148mm;overflow:hidden;background:white}
+  img{width:100mm!important;height:148mm!important;display:block;object-fit:fill;image-rendering:-webkit-optimize-contrast;image-rendering:crisp-edges}
+  @media print{html,body{width:100mm;height:148mm}img{width:100mm!important;height:148mm!important}}
+</style></head><body><img src="${dataUrl}"><script>
+  window.addEventListener('load',()=>{setTimeout(()=>{window.focus();window.print();setTimeout(()=>window.close(),1500)},600)});
+<\/script></body></html>`);
     win.document.close();
     return win;
   }
 
-  function markPrintFinished() {
-    setIsPrinting(false);
-  }
+  function markPrintFinished() { setIsPrinting(false); }
 
   async function batchPrint(canvas: HTMLCanvasElement, copies: number) {
     setPrinter(printCanvas);
@@ -285,22 +283,22 @@ function SessionPage() {
     await doPrintOnce();
   }
 
-  // (legacy upsell removed — copies chosen at payment now)
-
   return (
     <main className="min-h-screen px-4 py-6 max-w-5xl mx-auto">
-      {step !== "delivery" && (
+      {step !== "delivery" && step !== "format" && (
         <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
           <ArrowLeft className="h-4 w-4" /> หน้าแรก
         </Link>
+      )}
+
+      {step === "format" && (
+        <FormatSelect onPick={handleFormatPick} onBack={() => { window.history.back(); }} />
       )}
 
       {step === "capture" && (
         <CaptureFlow
           totalShots={LAYOUTS.find((l) => l.id === layout)?.needsCount ?? 4}
           aspectRatio={layout === "A" ? 9 / 16 : 3 / 4}
-          design={designId}
-          filter={filter}
           onComplete={handleCaptured}
           onBack={backFromCapture}
         />
@@ -313,18 +311,11 @@ function SessionPage() {
         </div>
       )}
 
-      {step === "theme" && (
-        <ThemePicker
-          onBack={() => { window.history.back(); }}
-          onPick={handleThemePick}
-        />
-      )}
-
       {step === "filter" && (
         <FilterPicker
           photos={photoUrls}
           initialFilter={filter}
-          layout={layout === "B" ? "B" : "A"}
+          layout={layout}
           onNext={(f) => { setFilter(f); setStep("payment"); }}
           onBack={() => setStep("capture")}
         />
@@ -332,17 +323,21 @@ function SessionPage() {
 
       {step === "payment" && (
         <section className="animate-fade-in max-w-md mx-auto text-center">
-          <h2 className="text-3xl font-heading font-bold mb-2">สแกน QR จ่ายได้เลย</h2>
-          <p className="text-muted-foreground mb-4">PromptPay รับทุกธนาคาร</p>
+          <h2 className="text-2xl font-heading font-bold mb-2">สแกน QR จ่ายได้เลย</h2>
+          <p className="text-muted-foreground mb-3 text-sm">PromptPay รับทุกธนาคาร</p>
 
-          {/* Layout preview */}
-          <div className="mb-4 px-4">
-            <FormatPreview id={layout} photos={photoUrls} />
-          </div>
+          {previewUrl && (
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+              <img
+                src={previewUrl}
+                alt="preview"
+                style={{ maxHeight: 200, width: "auto", borderRadius: 8, border: "1px solid rgba(0,0,0,0.1)" }}
+              />
+            </div>
+          )}
 
-          {/* Reviewer promo */}
           {!reviewerActive && promoLeft <= 0 && (
-            <div className="mb-5 px-4 text-left">
+            <div className="mb-4 px-4 text-left">
               <div className="rounded-2xl border border-border bg-card p-4">
                 <p className="font-heading font-bold text-center">แชร์ปุ๊บ ลดปั๊บ! 🔥</p>
                 <p className="text-xs text-muted-foreground mb-3 text-center">ลดเหลือ {PROMO_PRICE}.- ทันที</p>
@@ -362,32 +357,26 @@ function SessionPage() {
                   className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm mb-3"
                 />
                 <p className="text-[11px] text-muted-foreground mb-2 text-center">IG / TikTok ของคุณ</p>
-                <button
-                  onClick={activateReviewerPromo}
-                  className="w-full h-11 rounded-full bg-primary text-primary-foreground font-semibold text-sm"
-                >
+                <button onClick={activateReviewerPromo} className="w-full h-11 rounded-full bg-primary text-primary-foreground font-semibold text-sm">
                   รับส่วนลดเลย! →
                 </button>
               </div>
             </div>
           )}
           {reviewerActive && (
-            <div className="mb-5 px-4">
+            <div className="mb-4 px-4">
               <div className="rounded-2xl bg-green-500/10 border border-green-500/30 p-3 text-sm text-green-500 font-semibold">
                 ✅ ขอบคุณล่วงหน้าเลยนะ! ราคาพิเศษ {PROMO_PRICE}.- 🎉
               </div>
             </div>
           )}
 
-          {/* Copies toggle */}
-          <div className="grid grid-cols-2 gap-3 mb-5 px-4">
+          <div className="grid grid-cols-2 gap-3 mb-4 px-4">
             <button
               onClick={() => !confirming && setCopies(1)}
               disabled={confirming}
               className={`rounded-full py-3 px-3 font-semibold text-sm transition ${
-                copies === 1
-                  ? "bg-primary text-primary-foreground shadow-lg"
-                  : "border border-border text-muted-foreground hover:border-primary/60"
+                copies === 1 ? "bg-primary text-primary-foreground shadow-lg" : "border border-border text-muted-foreground hover:border-primary/60"
               }`}
             >
               <div>1 แผ่น</div>
@@ -397,23 +386,21 @@ function SessionPage() {
               onClick={() => !confirming && setCopies(2)}
               disabled={confirming}
               className={`rounded-full py-3 px-3 font-semibold text-sm transition ${
-                copies === 2
-                  ? "bg-primary text-primary-foreground shadow-lg"
-                  : "border border-border text-muted-foreground hover:border-primary/60"
+                copies === 2 ? "bg-primary text-primary-foreground shadow-lg" : "border border-border text-muted-foreground hover:border-primary/60"
               }`}
             >
-              <div>2 แผ่น 🔥 ประหยัดกว่า!</div>
-              <div className="text-xs opacity-80">{basePrice + REPRINT_PRICE}.- (รวมพิมพ์ซ้ำ)</div>
+              <div>2 แผ่น 🔥</div>
+              <div className="text-xs opacity-80">{basePrice + REPRINT_PRICE}.-</div>
             </button>
           </div>
 
-          <div className="bg-white p-4 rounded-3xl inline-block shadow-2xl mb-6">
-            <img src="/qr-payment.png" alt="PromptPay QR" className="w-[280px] max-w-full" />
+          <div className="bg-white p-3 rounded-2xl inline-block shadow-2xl mb-4">
+            <img src="/qr-payment.png" alt="PromptPay QR" className="w-[200px] max-w-full" />
           </div>
 
-          <p className="font-bold text-xl">นาย พงศกร อาจหาญ</p>
-          <p className="text-sm text-muted-foreground mb-2">รับเงินได้จากทุกธนาคาร</p>
-          <p className="text-3xl font-heading font-bold text-primary mb-8">{price} ฿</p>
+          <p className="font-bold text-lg">นาย พงศกร อาจหาญ</p>
+          <p className="text-xs text-muted-foreground mb-1">รับเงินได้จากทุกธนาคาร</p>
+          <p className="text-2xl font-heading font-bold text-primary mb-4">{price} ฿</p>
 
           <div>
             {!confirming ? (
@@ -425,13 +412,13 @@ function SessionPage() {
                 ✓ โอนแล้ว ยืนยันเลย
               </button>
             ) : !paid ? (
-              <div className="py-8">
-                <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+              <div className="py-6">
+                <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-3" />
                 <p className="font-semibold">กำลังเช็คให้นะ รอแปปนึง...</p>
-                <p className="text-sm text-muted-foreground mt-1">รอสักครู่นะ ใช้เวลาประมาณ 10 วินาที</p>
+                <p className="text-sm text-muted-foreground mt-1">ใช้เวลาประมาณ 10 วินาที</p>
               </div>
             ) : (
-              <div className="py-8">
+              <div className="py-6">
                 <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-3 animate-pop" />
                 <p className="text-xl font-semibold">เรียบร้อย! รับรูปได้เลย 🎉</p>
               </div>
@@ -488,49 +475,5 @@ function SessionPage() {
         </section>
       )}
     </main>
-  );
-}
-
-function FormatPreview({ id, photos }: { id: LayoutId; photos: string[] }) {
-  const p = (i: number) => photos[i] ?? "";
-  // Both layouts print on 100×148mm portrait sheets — preview matches exactly.
-  const sheetStyle: React.CSSProperties = {
-    aspectRatio: "100 / 148",
-    maxHeight: "55vh",
-  };
-
-  if (id === "A") {
-    // 2x6 strip: 2 columns × 3 photos, dashed cut line down the middle
-    return (
-      <div
-        className="mx-auto bg-white rounded-xl p-2 grid grid-cols-2 gap-2 relative shadow-md"
-        style={sheetStyle}
-      >
-        {[0, 1].map((col) => (
-          <div key={col} className="flex flex-col gap-1.5">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="flex-1 bg-muted overflow-hidden rounded-sm">
-                {p(i) && <img src={p(i)} alt="" className="w-full h-full object-cover" />}
-              </div>
-            ))}
-          </div>
-        ))}
-        <div className="absolute inset-y-2 left-1/2 -translate-x-1/2 border-l border-dashed border-slate-400 pointer-events-none" />
-      </div>
-    );
-  }
-
-  // Layout B — 4x6 full portrait, 2×2 grid
-  return (
-    <div
-      className="mx-auto bg-white rounded-xl p-2 grid grid-cols-2 grid-rows-2 gap-2 shadow-md"
-      style={sheetStyle}
-    >
-      {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="bg-muted overflow-hidden rounded">
-          {p(i) && <img src={p(i)} alt="" className="w-full h-full object-cover" />}
-        </div>
-      ))}
-    </div>
   );
 }
