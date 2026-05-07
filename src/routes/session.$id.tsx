@@ -264,7 +264,8 @@ function SessionPage() {
 
   async function doPrintOnce() {
     try {
-      const canvas = await urlToCanvas(photoOutputUrl);
+      if (!photoOutputBlob) throw new Error("no rendered image");
+      const canvas = await blobToCanvas(photoOutputBlob);
       setPrinter(printCanvas);
       enqueuePrint(canvas, id, 1, layout);
       setTimeout(markPrintFinished, 3000);
