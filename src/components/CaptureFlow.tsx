@@ -215,16 +215,7 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 
           style={{ transform: "scaleX(-1)", filter: filter && filter !== "none" ? undefined : undefined }}
         />
 
-        {/* Selected design's frame overlaid on the live preview */}
-        {frameUrl && (
-          <img
-            src={frameUrl}
-            alt=""
-            aria-hidden
-            className="absolute inset-0 w-full h-full pointer-events-none select-none"
-            style={{ objectFit: isPortrait ? "cover" : "fill", opacity: 0.95 }}
-          />
-        )}
+        {/* No decorative overlay during capture — only crop guide on container */}
 
         {phase === "countdown" && count > 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
