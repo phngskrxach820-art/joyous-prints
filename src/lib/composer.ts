@@ -1,5 +1,7 @@
 // Photo composition for layouts A/B/C/D
 import GIF from "gif.js";
+import { frameUrlForDesign } from "@/lib/design-frames";
+import type { DesignId } from "@/components/PhotoboothOverlay";
 
 export type LayoutId = "A" | "B" | "C" | "D";
 
