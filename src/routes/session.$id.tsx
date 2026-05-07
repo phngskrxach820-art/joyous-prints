@@ -11,8 +11,6 @@ import { ThemePicker } from "@/components/ThemePicker";
 import { FilterPicker } from "@/components/FilterPicker";
 import { FILTERS, type DesignId, type FilterKey } from "@/components/PhotoboothOverlay";
 import { NORMAL_PRICE, PROMO_PRICE, REPRINT_PRICE, promoRemaining, consumePromo } from "@/lib/promo";
-import QRCode from "qrcode";
-import { uploadToLan, getLanBaseUrl } from "@/lib/lan-server";
 import { enqueuePrint, setPrinter } from "@/lib/print-queue";
 
 export const Route = createFileRoute("/session/$id")({
