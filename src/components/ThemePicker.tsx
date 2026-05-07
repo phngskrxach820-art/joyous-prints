@@ -88,3 +88,36 @@ export function ThemePicker({ onBack, onPick }: Props) {
     </main>
   );
 }
+
+function FramePreview({ id }: { id: DesignId }) {
+  const meta = DESIGN_META[id];
+  const aspect = meta.format === "full" ? 1240 / 1844 : 600 / 1844;
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const { primary, fallback } = frameUrlForDesign(id);
+    (async () => {
+      const ok = await frameExists(primary);
+      if (cancelled) return;
+      setUrl(ok ? primary : fallback);
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
+
+  return (
+    <div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: aspect }}>
+      <div
+        className="absolute inset-0"
+        style={{ background: `linear-gradient(135deg, ${meta.bgColor}, ${meta.accentColor})` }}
+      />
+      {url ? (
+        <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+      ) : (
+        <PhotoboothOverlay design={id} filter="none">
+          <div className="w-full h-full" />
+        </PhotoboothOverlay>
+      )}
+    </div>
+  );
+}
