@@ -59,15 +59,38 @@ export const CANVAS_W = 1240;
 export const CANVAS_H = 1844;
 
 const STRIP_SLOTS_LEFT = [
-  { x: 40,  y: 140,  w: 520, h: 490 },
-  { x: 40,  y: 660,  w: 520, h: 490 },
-  { x: 40,  y: 1180, w: 520, h: 490 },
+  { x: 110, y: 390,  w: 413, h: 230 },
+  { x: 110, y: 684,  w: 413, h: 230 },
+  { x: 110, y: 1004, w: 413, h: 231 },
+  { x: 110, y: 1285, w: 413, h: 232 },
 ];
 const STRIP_SLOTS_RIGHT = [
-  { x: 680, y: 140,  w: 520, h: 490 },
-  { x: 680, y: 660,  w: 520, h: 490 },
-  { x: 680, y: 1180, w: 520, h: 490 },
+  { x: 735, y: 389,  w: 414, h: 232 },
+  { x: 735, y: 684,  w: 414, h: 230 },
+  { x: 735, y: 1004, w: 414, h: 231 },
+  { x: 735, y: 1286, w: 415, h: 231 },
 ];
+
+function drawSlotWithFilter(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  slot: { x: number; y: number; w: number; h: number },
+  filter: string,
+) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(slot.x, slot.y, slot.w, slot.h);
+  ctx.clip();
+  if (filter && filter !== "none") ctx.filter = filter;
+  const ratio = Math.max(slot.w / img.naturalWidth, slot.h / img.naturalHeight);
+  const nw = img.naturalWidth * ratio;
+  const nh = img.naturalHeight * ratio;
+  const ox = slot.x + (slot.w - nw) / 2;
+  const oy = slot.y + (slot.h - nh) / 2;
+  ctx.drawImage(img, ox, oy, nw, nh);
+  ctx.filter = "none";
+  ctx.restore();
+}
 const FULL_SLOTS = [
   { x: 40,  y: 60,   w: 560, h: 840 },
   { x: 640, y: 60,   w: 560, h: 840 },
@@ -86,13 +109,13 @@ export async function renderLayoutA(photos: string[], filter: string = "none"): 
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-  const imgs = await Promise.all(photos.slice(0, 3).map(loadImg));
+  const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
 
   STRIP_SLOTS_LEFT.forEach((slot, i) => {
-    if (imgs[i]) drawCoverFiltered(ctx, imgs[i], slot.x, slot.y, slot.w, slot.h, filter);
+    if (imgs[i]) drawSlotWithFilter(ctx, imgs[i], slot, filter);
   });
   STRIP_SLOTS_RIGHT.forEach((slot, i) => {
-    if (imgs[i]) drawCoverFiltered(ctx, imgs[i], slot.x, slot.y, slot.w, slot.h, filter);
+    if (imgs[i]) drawSlotWithFilter(ctx, imgs[i], slot, filter);
   });
 
   const frame = await loadFramePNG("strip");
@@ -122,7 +145,7 @@ export async function renderLayoutB(photos: string[], filter: string = "none"): 
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   const imgs = await Promise.all(photos.slice(0, 4).map(loadImg));
   FULL_SLOTS.forEach((slot, i) => {
-    if (imgs[i]) drawCoverFiltered(ctx, imgs[i], slot.x, slot.y, slot.w, slot.h, filter);
+    if (imgs[i]) drawSlotWithFilter(ctx, imgs[i], slot, filter);
   });
   const frame = await loadFramePNG("full");
   if (frame) ctx.drawImage(frame, 0, 0, CANVAS_W, CANVAS_H);
@@ -164,12 +187,7 @@ export async function renderLayoutD(photos: string[], filter: string = "none"): 
     const cx = c.getContext("2d")!;
     cx.fillStyle = "#000";
     cx.fillRect(0, 0, 800, 600);
-    drawCoverFiltered(cx, img, 0, 0, 800, 600, filter);
-    cx.font = "500 18px 'Noto Sans Thai', sans-serif";
-    cx.fillStyle = "rgba(255,255,255,0.7)";
-    cx.textAlign = "right";
-    cx.textBaseline = "bottom";
-    cx.fillText(WATERMARK, 790, 590);
+    drawSlotWithFilter(cx, img, { x: 0, y: 0, w: 800, h: 600 }, filter);
     gif.addFrame(c, { delay: 700 });
   }
   return new Promise((res, rej) => {
@@ -195,6 +213,6 @@ export async function renderLayout(layout: LayoutId, photos: string[], filter: s
 }
 
 export const LAYOUTS = [
-  { id: "A" as const, label: "แบบแถบ 2x6 💑", emoji: "💑", desc: "ถ่าย 3 รูป ได้ 2 แถบตัดแบ่งได้", needsCount: 3, popular: true },
+  { id: "A" as const, label: "แบบแถบ 2x6 💑", emoji: "💑", desc: "ถ่าย 4 รูป ได้ 2 แถบตัดแบ่งได้", needsCount: 4, popular: true },
   { id: "B" as const, label: "เต็มแผ่น 4x6 🖼️", emoji: "🖼️", desc: "ถ่าย 4 รูป เต็มแผ่น", recommended: true, needsCount: 4 },
 ];

@@ -49,7 +49,7 @@ function FullIllustration() {
 
 function FormatSelect({ onPick, onBack }: { onPick: (l: LayoutId) => void; onBack: () => void }) {
   const cards: { id: LayoutId; title: string; desc: string; render: () => React.ReactNode }[] = [
-    { id: "A", title: "แบบแถบ 2x6 💑", desc: "ถ่าย 3 รูป ได้ 2 แถบตัดแบ่งได้", render: () => <StripIllustration /> },
+    { id: "A", title: "แบบแถบ 2x6 💑", desc: "ถ่าย 4 รูป ได้ 2 แถบตัดแบ่งได้", render: () => <StripIllustration /> },
     { id: "B", title: "เต็มแผ่น 4x6 🖼️", desc: "ถ่าย 4 รูป เต็มแผ่น", render: () => <FullIllustration /> },
   ];
   return (
