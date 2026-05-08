@@ -328,13 +328,17 @@ function SessionPage() {
 <body>
 <img id="printImg" src="${dataUrl}">
 <script>
-  window.onload = function() {
-    setTimeout(function() {
-      window.print();
-      setTimeout(function() {
-        window.close();
-      }, 3000);
-    }, 800);
+  var img = document.getElementById('printImg');
+  function doPrint() {
+    window.focus();
+    window.print();
+    setTimeout(function() { window.close(); }, 3000);
+  }
+  if (img.complete && img.naturalWidth > 0) {
+    setTimeout(doPrint, 300);
+  } else {
+    img.onload = function() { setTimeout(doPrint, 300); };
+    img.onerror = function() { alert('โหลดรูปไม่ได้ กรุณาลองใหม่'); };
   }
 <\/script>
 </body>
