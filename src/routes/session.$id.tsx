@@ -192,14 +192,21 @@ function SessionPage() {
   async function confirmPayment() {
     setConfirming(true);
     await supabase.from("sessions").update({ payment_status: "checking" }).eq("id", id);
-    const renderPromise = backgroundRender(layout, photoUrls, FILTERS[filter]);
     setTimeout(async () => {
       await supabase.from("sessions").update({ payment_status: "paid" }).eq("id", id);
       if (isPromo) consumePromo();
       setPaid(true);
       paymentSuccess();
       setStep("rendering");
-      const blob = await renderPromise;
+    }, 10000);
+  }
+
+  // Render only when step reaches "rendering" — filter is locked by then
+  useEffect(() => {
+    if (step !== "rendering") return;
+    let cancelled = false;
+    backgroundRender(layout, photoUrls, FILTERS[filter]).then(async (blob) => {
+      if (cancelled) return;
       if (!blob) { setStep("delivery"); return; }
       setPhotoOutputBlob(blob);
       setStep("delivery");
@@ -210,28 +217,40 @@ function SessionPage() {
         await batchPrint(canvas, copies);
         setIsPrinting(false);
       } catch (e) { console.error(e); setIsPrinting(false); }
-    }, 10000);
-  }
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
-  function blobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
-    const url = URL.createObjectURL(blob);
-    return urlToCanvas(url).finally(() => URL.revokeObjectURL(url));
-  }
-
-  function urlToCanvas(url: string): Promise<HTMLCanvasElement> {
+  async function blobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
     return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
       const img = new Image();
-      img.crossOrigin = "anonymous";
       img.onload = () => {
         const c = document.createElement("canvas");
-        c.width = img.naturalWidth;
-        c.height = img.naturalHeight;
+        c.width = img.naturalWidth || img.width;
+        c.height = img.naturalHeight || img.height;
         const ctx = c.getContext("2d");
-        if (!ctx) return reject(new Error("no ctx"));
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          return reject(new Error("no ctx"));
+        }
         ctx.drawImage(img, 0, 0);
+        const check = ctx.getImageData(
+          Math.floor(c.width / 2),
+          Math.floor(c.height / 2),
+          1,
+          1,
+        );
+        URL.revokeObjectURL(url);
+        console.log("blobToCanvas:", c.width, "x", c.height, "center pixel:", check.data);
         resolve(c);
       };
-      img.onerror = () => reject(new Error("image load failed"));
+      img.onerror = (e) => {
+        URL.revokeObjectURL(url);
+        reject(new Error("image load failed: " + e));
+      };
+      img.crossOrigin = "anonymous";
       img.src = url;
     });
   }
@@ -318,13 +337,17 @@ function SessionPage() {
 <body>
 <img id="printImg" src="${dataUrl}">
 <script>
-  window.onload = function() {
-    setTimeout(function() {
-      window.print();
-      setTimeout(function() {
-        window.close();
-      }, 3000);
-    }, 800);
+  var img = document.getElementById('printImg');
+  function doPrint() {
+    window.focus();
+    window.print();
+    setTimeout(function() { window.close(); }, 3000);
+  }
+  if (img.complete && img.naturalWidth > 0) {
+    setTimeout(doPrint, 300);
+  } else {
+    img.onload = function() { setTimeout(doPrint, 300); };
+    img.onerror = function() { alert('โหลดรูปไม่ได้ กรุณาลองใหม่'); };
   }
 <\/script>
 </body>
