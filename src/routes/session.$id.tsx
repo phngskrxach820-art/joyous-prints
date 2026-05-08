@@ -192,14 +192,21 @@ function SessionPage() {
   async function confirmPayment() {
     setConfirming(true);
     await supabase.from("sessions").update({ payment_status: "checking" }).eq("id", id);
-    const renderPromise = backgroundRender(layout, photoUrls, FILTERS[filter]);
     setTimeout(async () => {
       await supabase.from("sessions").update({ payment_status: "paid" }).eq("id", id);
       if (isPromo) consumePromo();
       setPaid(true);
       paymentSuccess();
       setStep("rendering");
-      const blob = await renderPromise;
+    }, 10000);
+  }
+
+  // Render only when step reaches "rendering" — filter is locked by then
+  useEffect(() => {
+    if (step !== "rendering") return;
+    let cancelled = false;
+    backgroundRender(layout, photoUrls, FILTERS[filter]).then(async (blob) => {
+      if (cancelled) return;
       if (!blob) { setStep("delivery"); return; }
       setPhotoOutputBlob(blob);
       setStep("delivery");
@@ -210,8 +217,10 @@ function SessionPage() {
         await batchPrint(canvas, copies);
         setIsPrinting(false);
       } catch (e) { console.error(e); setIsPrinting(false); }
-    }, 10000);
-  }
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   async function blobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
     return new Promise((resolve, reject) => {
