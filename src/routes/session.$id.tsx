@@ -213,25 +213,35 @@ function SessionPage() {
     }, 10000);
   }
 
-  function blobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
-    const url = URL.createObjectURL(blob);
-    return urlToCanvas(url).finally(() => URL.revokeObjectURL(url));
-  }
-
-  function urlToCanvas(url: string): Promise<HTMLCanvasElement> {
+  async function blobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
     return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
       const img = new Image();
-      img.crossOrigin = "anonymous";
       img.onload = () => {
         const c = document.createElement("canvas");
-        c.width = img.naturalWidth;
-        c.height = img.naturalHeight;
+        c.width = img.naturalWidth || img.width;
+        c.height = img.naturalHeight || img.height;
         const ctx = c.getContext("2d");
-        if (!ctx) return reject(new Error("no ctx"));
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          return reject(new Error("no ctx"));
+        }
         ctx.drawImage(img, 0, 0);
+        const check = ctx.getImageData(
+          Math.floor(c.width / 2),
+          Math.floor(c.height / 2),
+          1,
+          1,
+        );
+        URL.revokeObjectURL(url);
+        console.log("blobToCanvas:", c.width, "x", c.height, "center pixel:", check.data);
         resolve(c);
       };
-      img.onerror = () => reject(new Error("image load failed"));
+      img.onerror = (e) => {
+        URL.revokeObjectURL(url);
+        reject(new Error("image load failed: " + e));
+      };
+      img.crossOrigin = "anonymous";
       img.src = url;
     });
   }
