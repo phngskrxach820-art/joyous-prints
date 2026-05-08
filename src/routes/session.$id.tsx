@@ -238,18 +238,100 @@ function SessionPage() {
 
   function printCanvas(canvas: HTMLCanvasElement): Window | null {
     const dataUrl = canvas.toDataURL("image/jpeg", 1.0);
-    const win = window.open("", "_blank");
-    if (!win) return null;
-    win.document.write(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  @page{size:100mm 148mm portrait;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  html,body{width:100mm;height:148mm;overflow:hidden;background:white}
-  img{width:100mm!important;height:148mm!important;display:block;object-fit:fill;image-rendering:-webkit-optimize-contrast;image-rendering:crisp-edges}
-  @media print{html,body{width:100mm;height:148mm}img{width:100mm!important;height:148mm!important}}
-</style></head><body><img src="${dataUrl}"><script>
-  window.addEventListener('load',()=>{setTimeout(()=>{window.focus();window.print();setTimeout(()=>window.close(),1500)},600)});
-<\/script></body></html>`);
+
+    const win = window.open(
+      "",
+      "_blank",
+      "width=400,height=600,toolbar=0,menubar=0,location=0,status=0",
+    );
+    if (!win) {
+      alert("กรุณาอนุญาต popup ก่อนนะครับ");
+      return null;
+    }
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>print</title>
+<style>
+  * {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+  @page {
+    size: 100mm 148mm portrait;
+    margin: 0mm !important;
+  }
+  html {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100mm;
+    height: 148mm;
+  }
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100mm;
+    height: 148mm;
+    overflow: hidden;
+    background: white;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  img {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100mm !important;
+    height: 148mm !important;
+    display: block;
+    object-fit: fill;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  @media print {
+    * {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    html, body {
+      width: 100mm !important;
+      height: 148mm !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
+    img {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100mm !important;
+      height: 148mm !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+  }
+</style>
+</head>
+<body>
+<img id="printImg" src="${dataUrl}">
+<script>
+  window.onload = function() {
+    setTimeout(function() {
+      window.print();
+      setTimeout(function() {
+        window.close();
+      }, 3000);
+    }, 800);
+  }
+<\/script>
+</body>
+</html>`;
+
+    win.document.open();
+    win.document.write(html);
     win.document.close();
     return win;
   }
