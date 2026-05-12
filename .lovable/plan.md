@@ -1,65 +1,68 @@
+## เป้าหมาย
 
-# แผนแก้ไข: สัดส่วนพิมพ์จริง 100×148mm + เคลียร์ overlay ตอนถ่าย
+แก้ให้กล้องตอนถ่ายโหมด Cinnamoroll ใช้สัดส่วน 521/465 (≈1.12 แนวนอน) ตรงกับช่องในกรอบ เพื่อให้รูปที่จับได้ลงพอดีทุกช่อง ไม่โดน crop เสียท่า — โดยไม่แตะ payment / strip / admin
 
-## 1. ลบไฟล์และอ้างอิง `frame_strip_default.png`
+## ไฟล์ที่จะแก้
 
-- ลบไฟล์ `public/frames/frame_strip_default.png`
-- `src/lib/design-frames.ts` → `frameFallbackForDesign()` คืน `null` สำหรับ design strip (ไม่มี fallback) แต่ full ยังคืน `/frames/frame_full_default.png`
-- `src/lib/composer.ts` → `loadFrameForDesign("A", …)` ถ้า design ที่เลือกไม่มี PNG ของตัวเอง → ไม่วาด frame เลย (ปริ้นรูปเปล่าๆ บนพื้นหลัง white)
-- `src/lib/frames.ts` → ลบ entry `strip-default` ออกจาก `DEFAULTS`
-- `src/routes/__root.tsx` → เอาบรรทัด prefetch `/frames/frame_strip_default.png` ออก
-- `src/components/CaptureFlow.tsx` และ `ThemePicker.tsx` → ใช้ผลลัพธ์ใหม่ของ `frameUrlForDesign` ที่อาจคืน `null` ได้
+- `src/components/CaptureFlow.tsx` — รับ prop `layout` และจัด aspect ratio + crop ตาม slot
+- `src/routes/session.$id.tsx` — ส่ง `layout` ลงไปให้ `CaptureFlow` (เลิกใช้ `aspectRatio` ที่คำนวณภายนอก)
+- `src/lib/composer.ts` — ยืนยัน SLOTS ของ cinnamoroll (ค่าปัจจุบันถูกอยู่แล้ว → no-op verify)
 
-## 2. กำหนดสัดส่วนกลาง = 100×148mm portrait (≈ 0.6757)
+## รายละเอียดการแก้
 
-สร้างค่ากลางใน `src/lib/composer.ts`:
+### 1) `CaptureFlow.tsx`
 
-```text
-PRINT_W_MM = 100
-PRINT_H_MM = 148
-PRINT_ASPECT = 100/148   // ใช้ทั่วทั้งแอป
-CANVAS_W = 1240          // px
-CANVAS_H = 1835          // px (1240 / (100/148))
-```
+- เปลี่ยน prop จาก `aspectRatio?: number` เป็น `layout: LayoutId` (import จาก `@/lib/composer`)
+- เพิ่มตารางกลางในไฟล์:
+  ```
+  const SLOT_RATIOS: Record<string, number> = {
+    A: 413 / 230,
+    B: 560 / 840,
+    cinnamoroll: 521 / 465,
+  }
+  const slotRatio = SLOT_RATIOS[layout] ?? 3 / 4
+  ```
+- ใช้ `slotRatio` เป็นทั้ง:
+  - `aspectRatio` ของกล่อง video (style แบบในสเปก: `width:100%`, `maxHeight:70vh`, `aspectRatio: slotRatio`, mirror selfie)
+  - cropping ตอน capture (แทน logic เดิมที่คำนวณ `cropW = vh * aspectRatio`)
+- เขียน `capture()` ใหม่ตามสเปก `captureFrame`:
+  - คำนวณ `sx/sy/sw/sh` จาก `vidRatio` vs `slotRatio` (crop ซ้าย-ขวา หรือ บน-ล่าง)
+  - canvas ขนาด `sw × sh` เต็ม native res, mirror ด้วย `translate(sw,0); scale(-1,1)`
+  - แปลงเป็น Blob ผ่าน `toBlob('image/jpeg', 0.97)` (ใช้ Blob ต่อ flow เดิมที่ส่ง `Blob[]` ขึ้น `onComplete`; เก็บ quality 0.97 ตามสเปก)
+- `containerStyle`: เลิกแยก portrait/landscape — ใช้ `width:100%, maxHeight:70vh, aspectRatio: slotRatio` ตัวเดียว ใช้ได้กับทุก layout
+- Progress text เดิมแสดง `รูปที่ X/totalShots` อยู่แล้ว → cinnamoroll จะกลายเป็น "รูปที่ X/6" อัตโนมัติเมื่อ parent ส่ง `totalShots=6` (มีอยู่แล้ว)
 
-- เปลี่ยน Layout B (`renderLayoutB`) จาก landscape `1844×1240` → portrait `1240×1835`, จัด 4 ช่องเป็น 2×2 grid (เหมือน design 4-slot ที่วางไว้แล้ว)
-- Layout A คง `1240×1835` portrait (strip ซ้าย+ขวา 3 รูป) — ปรับตัวเลข slot เล็กน้อยให้ตรง 1835
-- `printCanvas()` ใน `session.$id.tsx` ตั้ง `@page size: 100mm 148mm portrait` อยู่แล้ว — คงไว้
+### 2) `session.$id.tsx`
 
-## 3. FormatPreview ใหม่ (หน้าจ่ายเงิน)
+- จุดที่ render `CaptureFlow`: เปลี่ยน
+  ```
+  aspectRatio={layout === "A" ? 9/16 : layout === "cinnamoroll" ? 521/465 : 3/4}
+  ```
+  → ส่งเป็น `layout={layout}` แทน
+- `totalShots` ตามแต่ละ layout คงเดิม (cinnamoroll = 6)
+- ไม่แตะ payment / promo / print / admin / FormatSelect (cinnamoroll card มีอยู่แล้วและ select ได้)
 
-แก้ `FormatPreview` ใน `src/routes/session.$id.tsx` ให้:
+### 3) `composer.ts`
 
-- กล่องนอกใช้ `aspect-ratio: 100/148` (portrait) ทั้ง A และ B — ตรงกับกระดาษจริง
-- **Layout A (2×6 strip):** กรอบขาว portrait → แบ่ง 2 คอลัมน์ซ้าย/ขวา → แต่ละคอลัมน์ 3 ช่องรูปวางเรียงลง + เส้นประตัดกลาง
-- **Layout B (4×6 full):** กรอบขาว portrait → grid 2×2 ช่องรูป
-- รูป thumbnail ใช้ `object-fit: cover` เหมือนเดิม
-
-ผลลัพธ์: ลูกค้าเห็น preview ที่อัตราส่วนเดียวกันกับใบที่ออกจากปริ้นเตอร์เป๊ะ
-
-## 4. Capture overlay = crop guide เท่านั้น
-
-แก้ `src/components/CaptureFlow.tsx`:
-
-- ลบ state `frameUrl`, `useEffect` ที่โหลด frame, และ `<img>` overlay frame บน video
-- ลบ import `frameUrlForDesign`, `frameExists`
-- เก็บแค่กล่อง `border-2 border-dashed border-white/70` (crop guide เดิม) — ไม่มีลายตกแต่งใดๆ
-- กรอบจริงจะถูกวางตอน final render เท่านั้น (ผ่าน `composer.ts` → PNG ที่จะอัปโหลดทีหลัง)
-
-`ThemePicker` `FramePreview` คงไว้ (ใช้แสดงตัวอย่างกรอบบน theme card) — ถ้า PNG ไม่มี ก็ไม่แสดง
-
-## 5. ไฟล์ที่จะแก้
-
-- ลบ: `public/frames/frame_strip_default.png`
-- แก้: `src/lib/design-frames.ts`, `src/lib/composer.ts`, `src/lib/frames.ts`
-- แก้: `src/routes/__root.tsx` (เอา prefetch ออก)
-- แก้: `src/routes/session.$id.tsx` (FormatPreview ใหม่)
-- แก้: `src/components/CaptureFlow.tsx` (เอา overlay frame ออก)
+- ตรวจ `SLOTS` ใน `renderLayoutCinnamoroll` ตรงกับสเปก:
+  ```
+  [{52,85,521,465}, {628,85,521,465},
+   {52,605,521,465}, {628,605,521,465},
+   {52,1120,521,470}, {628,1120,521,470}]  r=40, canvas 1200×1800
+  ```
+  ปัจจุบันตรงอยู่แล้ว — ไม่ต้องแก้
+- โค้ด `drawImage` ใช้ cover-fit (`Math.max` ratio) อยู่แล้ว — เมื่อ input photo มี ratio 521/465 ก็จะลงเป๊ะไม่ crop เพิ่ม
 
 ## ของที่ไม่แตะ
 
-- ราคา / โปรโมชัน / promo logic
-- LAN server / print queue
-- Cloudinary / Supabase upload flow
-- FilterPicker
-- ThemePicker (นอกจากปรับให้รับ `null` จาก fallback)
+- Payment / promo / Supabase update
+- Strip layout (A) rendering, slot positions
+- Admin, print queue, LAN server, Cloudinary upload
+- FilterPicker, ThemePicker
+- Layout B, C, D rendering
+
+## ผลที่คาดหวัง
+
+- เลือก "ชินนาม่อน 🐰" → กล้อง preview เป็นกรอบแนวนอน 1.12:1 ตรงกับช่องในกรอบ
+- ถ่าย 6 รูปต่อเนื่อง progress "รูปที่ N/6"
+- รูปที่ออกมาบนกรอบ Cinnamoroll เต็มทุกช่องไม่โดน crop เพี้ยน
