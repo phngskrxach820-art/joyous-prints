@@ -251,8 +251,9 @@ export async function renderLayoutCinnamoroll(photos: string[], filter: string =
     const frame = await loadImg("/frames/frame_full_cinnamoroll.png");
     ctx.filter = "none";
     ctx.drawImage(frame, 0, 0, 1200, 1800);
+    console.log("✅ Cinnamoroll frame loaded OK");
   } catch (e) {
-    console.warn("Cinnamoroll frame not found:", e);
+    console.error("❌ Frame load failed:", e);
   }
 
   return canvasToBlob(canvas, "image/jpeg", 1.0);
