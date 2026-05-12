@@ -143,10 +143,12 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, layout }: Prop
     );
   }
 
-  const isPortrait = aspectRatio < 1;
-  const containerStyle: React.CSSProperties = isPortrait
-    ? { aspectRatio: `${aspectRatio}`, maxHeight: "70vh", width: "auto" }
-    : { aspectRatio: `${aspectRatio}`, width: "100%" };
+  const containerStyle: React.CSSProperties = {
+    width: "100%",
+    maxHeight: "70vh",
+    aspectRatio: `${slotRatio}`,
+    margin: "0 auto",
+  };
 
   return (
     <div className="relative min-h-[80vh] flex flex-col items-center">
