@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera as CamIcon, ArrowLeft } from "lucide-react";
 import { tick, shutter } from "@/lib/audio";
+import type { LayoutId } from "@/lib/composer";
+
+const SLOT_RATIOS: Record<string, number> = {
+  A: 413 / 230,
+  B: 560 / 840,
+  cinnamoroll: 521 / 465,
+};
 
 type Props = {
   onComplete: (photos: Blob[]) => void;
   totalShots?: number;
   onBack?: () => void;
-  /** target ratio width/height. Format A => 9/16, Format B => 3/4 */
-  aspectRatio?: number;
+  layout: LayoutId;
 };
 
-export function CaptureFlow({ onComplete, totalShots = 4, onBack, aspectRatio = 3 / 4 }: Props) {
+export function CaptureFlow({ onComplete, totalShots = 4, onBack, layout }: Props) {
+  const slotRatio = SLOT_RATIOS[layout] ?? 3 / 4;
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [phase, setPhase] = useState<"init" | "ready" | "pause" | "countdown" | "flash" | "review" | "done" | "error">("init");
