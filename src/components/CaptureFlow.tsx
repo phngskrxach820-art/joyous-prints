@@ -86,23 +86,29 @@ export function CaptureFlow({ onComplete, totalShots = 4, onBack, layout }: Prop
     shutter();
     const video = videoRef.current;
     if (!video) return;
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-    let cropW = vh * aspectRatio;
-    let cropH = vh;
-    if (cropW > vw) { cropW = vw; cropH = vw / aspectRatio; }
-    const sx = (vw - cropW) / 2;
-    const sy = (vh - cropH) / 2;
-    const outH = 1200;
-    const outW = Math.round(outH * aspectRatio);
+    const vidW = video.videoWidth;
+    const vidH = video.videoHeight;
+    const vidRatio = vidW / vidH;
+    let sx = 0, sy = 0, sw = vidW, sh = vidH;
+    if (vidRatio > slotRatio) {
+      sh = vidH;
+      sw = Math.round(sh * slotRatio);
+      sx = Math.round((vidW - sw) / 2);
+      sy = 0;
+    } else {
+      sw = vidW;
+      sh = Math.round(sw / slotRatio);
+      sx = 0;
+      sy = Math.round((vidH - sh) / 2);
+    }
     const c = document.createElement("canvas");
-    c.width = outW; c.height = outH;
+    c.width = sw; c.height = sh;
     const ctx = c.getContext("2d")!;
-    ctx.translate(outW, 0);
+    ctx.translate(sw, 0);
     ctx.scale(-1, 1);
-    ctx.drawImage(video, sx, sy, cropW, cropH, 0, 0, outW, outH);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
     const blob: Blob = await new Promise((res, rej) =>
-      c.toBlob((b) => (b ? res(b) : rej()), "image/jpeg", 0.92),
+      c.toBlob((b) => (b ? res(b) : rej()), "image/jpeg", 0.97),
     );
     const url = URL.createObjectURL(blob);
     const newBlobs = [...blobs, blob];
