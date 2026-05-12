@@ -1,7 +1,7 @@
 // Photo composition for layouts A/B/C/D
 import GIF from "gif.js";
 
-export type LayoutId = "A" | "B" | "C" | "D";
+export type LayoutId = "A" | "B" | "C" | "D" | "cinnamoroll";
 
 const WATERMARK = "เฮงที่ชอบพกกล้องมาวิทยาลัย";
 
@@ -203,16 +203,73 @@ function canvasToBlob(c: HTMLCanvasElement, type = "image/jpeg", q = 0.97): Prom
   );
 }
 
+export async function renderLayoutCinnamoroll(photos: string[], filter: string = "none"): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1200;
+  canvas.height = 1800;
+  const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, 1200, 1800);
+
+  const imgs = await Promise.all(photos.slice(0, 6).map((s) => loadImg(s)));
+
+  const SLOTS = [
+    { x: 52,  y: 85,   w: 521, h: 465, r: 40 },
+    { x: 628, y: 85,   w: 521, h: 465, r: 40 },
+    { x: 52,  y: 605,  w: 521, h: 465, r: 40 },
+    { x: 628, y: 605,  w: 521, h: 465, r: 40 },
+    { x: 52,  y: 1120, w: 521, h: 470, r: 40 },
+    { x: 628, y: 1120, w: 521, h: 470, r: 40 },
+  ];
+
+  SLOTS.forEach((slot, i) => {
+    const img = imgs[i];
+    if (!img) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(slot.x + slot.r, slot.y);
+    ctx.arcTo(slot.x + slot.w, slot.y, slot.x + slot.w, slot.y + slot.h, slot.r);
+    ctx.arcTo(slot.x + slot.w, slot.y + slot.h, slot.x, slot.y + slot.h, slot.r);
+    ctx.arcTo(slot.x, slot.y + slot.h, slot.x, slot.y, slot.r);
+    ctx.arcTo(slot.x, slot.y, slot.x + slot.w, slot.y, slot.r);
+    ctx.closePath();
+    ctx.clip();
+    if (filter && filter !== "none") ctx.filter = filter;
+    const ratio = Math.max(slot.w / img.naturalWidth, slot.h / img.naturalHeight);
+    const nw = img.naturalWidth * ratio;
+    const nh = img.naturalHeight * ratio;
+    const ox = slot.x + (slot.w - nw) / 2;
+    const oy = slot.y + (slot.h - nh) / 2;
+    ctx.drawImage(img, ox, oy, nw, nh);
+    ctx.filter = "none";
+    ctx.restore();
+  });
+
+  try {
+    const frame = await loadImg("/frames/frame_full_cinnamoroll.png");
+    ctx.filter = "none";
+    ctx.drawImage(frame, 0, 0, 1200, 1800);
+  } catch (e) {
+    console.warn("Cinnamoroll frame not found:", e);
+  }
+
+  return canvasToBlob(canvas, "image/jpeg", 1.0);
+}
+
 export async function renderLayout(layout: LayoutId, photos: string[], filter: string = "none"): Promise<Blob> {
   switch (layout) {
     case "A": return renderLayoutA(photos, filter);
     case "B": return renderLayoutB(photos, filter);
     case "C": return renderLayoutC(photos, filter);
     case "D": return renderLayoutD(photos, filter);
+    case "cinnamoroll": return renderLayoutCinnamoroll(photos, filter);
   }
 }
 
 export const LAYOUTS = [
   { id: "A" as const, label: "แบบแถบ 2x6 💑", emoji: "💑", desc: "ถ่าย 4 รูป ได้ 2 แถบตัดแบ่งได้", needsCount: 4, popular: true },
   { id: "B" as const, label: "เต็มแผ่น 4x6 🖼️", emoji: "🖼️", desc: "ถ่าย 4 รูป เต็มแผ่น", recommended: true, needsCount: 4 },
+  { id: "cinnamoroll" as const, label: "ชินนาม่อน 🐰", emoji: "🐰", desc: "ถ่าย 6 รูป กรอบ Cinnamoroll น่ารัก", needsCount: 6 },
 ];
