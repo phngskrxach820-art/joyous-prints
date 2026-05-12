@@ -47,10 +47,26 @@ function FullIllustration() {
   );
 }
 
+function CinnamorollIllustration() {
+  return (
+    <svg viewBox="0 0 200 296" style={{ width: 120, height: "auto" }}>
+      <rect x="0" y="0" width="200" height="296" fill="#fde7ee" stroke="#f5b8c8" strokeWidth="2" rx="8" />
+      <rect x="12" y="14" width="84" height="76" fill="#fff" rx="8" />
+      <rect x="104" y="14" width="84" height="76" fill="#fff" rx="8" />
+      <rect x="12" y="100" width="84" height="76" fill="#fff" rx="8" />
+      <rect x="104" y="100" width="84" height="76" fill="#fff" rx="8" />
+      <rect x="12" y="186" width="84" height="78" fill="#fff" rx="8" />
+      <rect x="104" y="186" width="84" height="78" fill="#fff" rx="8" />
+      <text x="100" y="284" textAnchor="middle" fontSize="11" fill="#a06a85">🐰 Cinnamoroll</text>
+    </svg>
+  );
+}
+
 function FormatSelect({ onPick, onBack }: { onPick: (l: LayoutId) => void; onBack: () => void }) {
   const cards: { id: LayoutId; title: string; desc: string; render: () => React.ReactNode }[] = [
     { id: "A", title: "แบบแถบ 2x6 💑", desc: "ถ่าย 4 รูป ได้ 2 แถบตัดแบ่งได้", render: () => <StripIllustration /> },
     { id: "B", title: "เต็มแผ่น 4x6 🖼️", desc: "ถ่าย 4 รูป เต็มแผ่น", render: () => <FullIllustration /> },
+    { id: "cinnamoroll", title: "ชินนาม่อน 🐰", desc: "ถ่าย 6 รูป กรอบ Cinnamoroll น่ารัก", render: () => <CinnamorollIllustration /> },
   ];
   return (
     <section className="animate-fade-in max-w-3xl mx-auto">
@@ -403,7 +419,7 @@ function SessionPage() {
       {step === "capture" && (
         <CaptureFlow
           totalShots={LAYOUTS.find((l) => l.id === layout)?.needsCount ?? 4}
-          aspectRatio={layout === "A" ? 9 / 16 : 3 / 4}
+          aspectRatio={layout === "A" ? 9 / 16 : layout === "cinnamoroll" ? 521 / 465 : 3 / 4}
           onComplete={handleCaptured}
           onBack={backFromCapture}
         />
