@@ -1,68 +1,60 @@
 ## เป้าหมาย
 
-แก้ให้กล้องตอนถ่ายโหมด Cinnamoroll ใช้สัดส่วน 521/465 (≈1.12 แนวนอน) ตรงกับช่องในกรอบ เพื่อให้รูปที่จับได้ลงพอดีทุกช่อง ไม่โดน crop เสียท่า — โดยไม่แตะ payment / strip / admin
+สร้างไฟล์เดียว (Markdown) ที่รวม **prompt + โค้ดทั้งโปรเจกต์** สำหรับให้ AI อีกตัว (เช่น Cursor/Copilot/Claude ใน VSCode) สร้างโปรเจกต์นี้ขึ้นมาใหม่บนเครื่อง local ได้ครบ
 
-## ไฟล์ที่จะแก้
+ผลลัพธ์: ไฟล์ดาวน์โหลดได้ที่ `/mnt/documents/photobooth-bundle.md` พร้อม `<presentation-artifact>` ให้ user กดโหลด
 
-- `src/components/CaptureFlow.tsx` — รับ prop `layout` และจัด aspect ratio + crop ตาม slot
-- `src/routes/session.$id.tsx` — ส่ง `layout` ลงไปให้ `CaptureFlow` (เลิกใช้ `aspectRatio` ที่คำนวณภายนอก)
-- `src/lib/composer.ts` — ยืนยัน SLOTS ของ cinnamoroll (ค่าปัจจุบันถูกอยู่แล้ว → no-op verify)
+## เนื้อหาในไฟล์
 
-## รายละเอียดการแก้
+### ส่วนที่ 1 — Prompt หัวเรื่อง (ภาษาไทย)
+- บอก AI ว่าให้สร้างโปรเจกต์ TanStack Start + React 19 + Vite 7 + Tailwind v4 + Supabase
+- ขั้นตอน: `bun create`, ติดตั้ง deps, สร้างไฟล์ตาม path ที่ให้, รัน `bun dev`
+- ตั้งค่า `.env` (VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_SUPABASE_PROJECT_ID) — ให้ user กรอกเอง
+- รายการ DB schema: `sessions`, `print_queue` + storage bucket `photos` พร้อม SQL ให้รันใน Supabase
 
-### 1) `CaptureFlow.tsx`
+### ส่วนที่ 2 — package.json + config
+- `package.json`, `tsconfig.json`, `vite.config.ts`, `wrangler.jsonc`, `components.json`, `bunfig.toml`, `eslint.config.js`, `.prettierrc`
 
-- เปลี่ยน prop จาก `aspectRatio?: number` เป็น `layout: LayoutId` (import จาก `@/lib/composer`)
-- เพิ่มตารางกลางในไฟล์:
-  ```
-  const SLOT_RATIOS: Record<string, number> = {
-    A: 413 / 230,
-    B: 560 / 840,
-    cinnamoroll: 521 / 465,
-  }
-  const slotRatio = SLOT_RATIOS[layout] ?? 3 / 4
-  ```
-- ใช้ `slotRatio` เป็นทั้ง:
-  - `aspectRatio` ของกล่อง video (style แบบในสเปก: `width:100%`, `maxHeight:70vh`, `aspectRatio: slotRatio`, mirror selfie)
-  - cropping ตอน capture (แทน logic เดิมที่คำนวณ `cropW = vh * aspectRatio`)
-- เขียน `capture()` ใหม่ตามสเปก `captureFrame`:
-  - คำนวณ `sx/sy/sw/sh` จาก `vidRatio` vs `slotRatio` (crop ซ้าย-ขวา หรือ บน-ล่าง)
-  - canvas ขนาด `sw × sh` เต็ม native res, mirror ด้วย `translate(sw,0); scale(-1,1)`
-  - แปลงเป็น Blob ผ่าน `toBlob('image/jpeg', 0.97)` (ใช้ Blob ต่อ flow เดิมที่ส่ง `Blob[]` ขึ้น `onComplete`; เก็บ quality 0.97 ตามสเปก)
-- `containerStyle`: เลิกแยก portrait/landscape — ใช้ `width:100%, maxHeight:70vh, aspectRatio: slotRatio` ตัวเดียว ใช้ได้กับทุก layout
-- Progress text เดิมแสดง `รูปที่ X/totalShots` อยู่แล้ว → cinnamoroll จะกลายเป็น "รูปที่ X/6" อัตโนมัติเมื่อ parent ส่ง `totalShots=6` (มีอยู่แล้ว)
+### ส่วนที่ 3 — ไฟล์ source หลัก (ใส่เนื้อหาเต็ม)
+- `src/router.tsx`, `src/styles.css`
+- `src/routes/__root.tsx`, `index.tsx`, `admin.tsx`, `live.tsx`, `session.$id.tsx`, `download.$id.tsx`
+- `src/components/CaptureFlow.tsx`, `FormatCard.tsx`, `FilterPicker.tsx`, `Instructions.tsx`, `InstallPrompt.tsx`, `ThemeProvider.tsx`
+- `src/lib/composer.ts`, `frames.ts`, `filters.ts`, `audio.ts`, `promo.ts`, `print-queue.ts`, `lan-server.ts`, `admin-config.ts`, `utils.ts`
+- `src/integrations/supabase/client.ts`, `types.ts`, `auth-middleware.ts`, `client.server.ts` (พร้อมหมายเหตุว่า auto-gen)
 
-### 2) `session.$id.tsx`
+### ส่วนที่ 4 — public/ + server/
+- `public/manifest.json`, `sw.js`, `gif.worker.js`, `robots.txt`
+- หมายเหตุไฟล์รูป/เสียงที่ต้องเตรียมเอง: `public/frames/*.png` (โดยเฉพาะ `frame_full_cinnamoroll.png`), `qr-payment.png`
+- `server/index.js`, `server/package.json`, `server/README.md` (LAN print server)
 
-- จุดที่ render `CaptureFlow`: เปลี่ยน
-  ```
-  aspectRatio={layout === "A" ? 9/16 : layout === "cinnamoroll" ? 521/465 : 3/4}
-  ```
-  → ส่งเป็น `layout={layout}` แทน
-- `totalShots` ตามแต่ละ layout คงเดิม (cinnamoroll = 6)
-- ไม่แตะ payment / promo / print / admin / FormatSelect (cinnamoroll card มีอยู่แล้วและ select ได้)
+### ส่วนที่ 5 — Supabase setup SQL
+- CREATE TABLE sessions, print_queue
+- RLS policies ที่ใช้อยู่
+- Storage bucket `photos` (public)
 
-### 3) `composer.ts`
+### ส่วนที่ 6 — checklist หลังสร้าง
+- `bun install` → `bun dev`
+- ตรวจ `frame_full_cinnamoroll.png` มีจริงใน `public/frames/`
+- เปิด `/admin` เพื่อตั้งค่า
 
-- ตรวจ `SLOTS` ใน `renderLayoutCinnamoroll` ตรงกับสเปก:
-  ```
-  [{52,85,521,465}, {628,85,521,465},
-   {52,605,521,465}, {628,605,521,465},
-   {52,1120,521,470}, {628,1120,521,470}]  r=40, canvas 1200×1800
-  ```
-  ปัจจุบันตรงอยู่แล้ว — ไม่ต้องแก้
-- โค้ด `drawImage` ใช้ cover-fit (`Math.max` ratio) อยู่แล้ว — เมื่อ input photo มี ratio 521/465 ก็จะลงเป๊ะไม่ crop เพิ่ม
+## วิธีทำ
 
-## ของที่ไม่แตะ
+1. รันสคริปต์ใน `code--exec` เพื่อ:
+   - อ่านไฟล์ทั้งหมดในรายการข้างบน
+   - ห่อแต่ละไฟล์ใน fenced code block พร้อม heading `### path/to/file`
+   - prepend prompt-header (ภาษาไทย) + Supabase SQL
+   - เขียนผลลัพธ์ลง `/mnt/documents/photobooth-bundle.md`
+2. รายงานขนาดไฟล์ + presentation-artifact tag
 
-- Payment / promo / Supabase update
-- Strip layout (A) rendering, slot positions
-- Admin, print queue, LAN server, Cloudinary upload
-- FilterPicker, ThemePicker
-- Layout B, C, D rendering
+## ของที่ไม่รวม
 
-## ผลที่คาดหวัง
+- ไฟล์ binary (.png, .mp3, .ico, qr-payment.png) — ใส่เป็น "เตรียมเอง" แทน เพราะลง markdown ไม่ได้
+- `node_modules/`, `.lovable/`, `dist/`, `routeTree.gen.ts` (auto-gen)
+- `src/components/ui/*` (shadcn) — ใส่คำสั่ง `bunx shadcn@latest add ...` แทน เพื่อลดขนาดไฟล์ (~50 ไฟล์)
 
-- เลือก "ชินนาม่อน 🐰" → กล้อง preview เป็นกรอบแนวนอน 1.12:1 ตรงกับช่องในกรอบ
-- ถ่าย 6 รูปต่อเนื่อง progress "รูปที่ N/6"
-- รูปที่ออกมาบนกรอบ Cinnamoroll เต็มทุกช่องไม่โดน crop เพี้ยน
+## คำถามก่อนลงมือ
+
+ก่อนสร้าง อยากเช็ค 2 จุด:
+
+1. **shadcn ui components (~50 ไฟล์ใน `src/components/ui/`)** — รวมโค้ดเต็มลงไฟล์ หรือ ใส่แค่คำสั่ง `bunx shadcn add button card ...` ให้ AI ติดตั้งเอง?
+2. **ไฟล์ binary (กรอบ PNG, เสียง, QR)** — ต้องการให้ encode เป็น base64 ฝังใน markdown ไหม (ไฟล์จะใหญ่ขึ้นมาก) หรือใส่เป็น placeholder ให้ user copy เองทีหลัง?
