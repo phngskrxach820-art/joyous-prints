@@ -48,6 +48,10 @@ function Admin() {
   const [serverUp, setServerUp] = useState<boolean | null>(null);
   const tapTimesRef = useRef<number[]>([]);
   const [pq, setPq] = useState(() => getPrintQueueState());
+  const [gallery, setGallery] = useState<GallerySession[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [galleryFilter, setGalleryFilter] = useState<"all" | "paid" | "pending">("all");
+  const [lightbox, setLightbox] = useState<{ url: string; sessionId: string; index: number } | null>(null);
 
   useEffect(() => {
     const unsub = subscribePrintQueue(() => setPq(getPrintQueueState()));
