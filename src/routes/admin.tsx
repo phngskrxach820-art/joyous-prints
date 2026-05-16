@@ -20,6 +20,15 @@ type Session = {
   price: number;
 };
 
+type GallerySession = {
+  id: string;
+  created_at: string;
+  layout: string | null;
+  payment_status: string;
+  photos: string[] | null;
+  output_url: string | null;
+};
+
 type ReviewSession = {
   id: string;
   created_at: string;
