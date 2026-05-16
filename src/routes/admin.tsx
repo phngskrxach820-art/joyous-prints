@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Lock, RefreshCw } from "lucide-react";
+import { Lock, RefreshCw, Download, X } from "lucide-react";
 import { loadConfig, saveConfig, defaults, THEMES, applyTheme, type AdminConfig } from "@/lib/admin-config";
 import { toast } from "sonner";
 import { loadLan, saveLan, detectLocalIp, pingLanServer, getLanBaseUrl, type LanConfig } from "@/lib/lan-server";
@@ -18,6 +18,15 @@ type Session = {
   layout: string | null;
   output_url: string | null;
   price: number;
+};
+
+type GallerySession = {
+  id: string;
+  created_at: string;
+  layout: string | null;
+  payment_status: string;
+  photos: string[] | null;
+  output_url: string | null;
 };
 
 type ReviewSession = {
@@ -39,6 +48,10 @@ function Admin() {
   const [serverUp, setServerUp] = useState<boolean | null>(null);
   const tapTimesRef = useRef<number[]>([]);
   const [pq, setPq] = useState(() => getPrintQueueState());
+  const [gallery, setGallery] = useState<GallerySession[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [galleryFilter, setGalleryFilter] = useState<"all" | "paid" | "pending">("all");
+  const [lightbox, setLightbox] = useState<{ url: string; sessionId: string; index: number } | null>(null);
 
   useEffect(() => {
     const unsub = subscribePrintQueue(() => setPq(getPrintQueueState()));
@@ -87,8 +100,26 @@ function Admin() {
   }
 
   useEffect(() => {
-    if (authed) fetchSessions();
+    if (authed) {
+      fetchSessions();
+      fetchGallery();
+    }
   }, [authed]);
+
+  async function fetchGallery() {
+    setGalleryLoading(true);
+    const { data } = await supabase
+      .from("sessions")
+      .select("id,created_at,layout,payment_status,photos,output_url")
+      .not("photos", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    const rows = ((data ?? []) as unknown as GallerySession[]).filter(
+      (r) => Array.isArray(r.photos) && r.photos.length > 0
+    );
+    setGallery(rows);
+    setGalleryLoading(false);
+  }
 
   function tryLogin() {
     if (pin === cfg.pin) setAuthed(true);
@@ -358,6 +389,114 @@ function Admin() {
           </div>
         </div>
       </section>
+
+      {/* Gallery */}
+      <section className="mb-8 p-6 rounded-3xl bg-card border border-border">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h2 className="font-heading font-bold text-xl">🖼️ แกลเลอรี่ย้อนหลัง</h2>
+          <div className="flex items-center gap-2">
+            <select
+              value={galleryFilter}
+              onChange={(e) => setGalleryFilter(e.target.value as typeof galleryFilter)}
+              className="h-9 px-3 rounded-full bg-muted border border-border text-sm"
+            >
+              <option value="all">ทั้งหมด</option>
+              <option value="paid">จ่ายแล้ว</option>
+              <option value="pending">รอจ่าย</option>
+            </select>
+            <button onClick={fetchGallery} className="p-2 rounded-full hover:bg-muted" title="Refresh">
+              <RefreshCw className={`h-4 w-4 ${galleryLoading ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+        </div>
+
+        {gallery.length === 0 && !galleryLoading && (
+          <p className="text-sm text-muted-foreground">ยังไม่มีรูป</p>
+        )}
+
+        <div className="space-y-6">
+          {gallery
+            .filter((g) => galleryFilter === "all" || g.payment_status === galleryFilter)
+            .map((s) => {
+              const d = new Date(s.created_at);
+              const photos = (s.photos ?? []) as string[];
+              return (
+                <div key={s.id} className="border border-border rounded-2xl p-4">
+                  <div className="flex items-center gap-3 mb-3 flex-wrap text-sm">
+                    <span className="font-mono text-xs text-muted-foreground">{s.id.slice(0, 8)}</span>
+                    <span className="font-semibold">{s.layout ?? "-"}</span>
+                    <span className="text-muted-foreground">
+                      {d.toLocaleDateString("th-TH")} {d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs ${
+                        s.payment_status === "paid"
+                          ? "bg-green-500/20 text-green-500"
+                          : "bg-yellow-500/20 text-yellow-600"
+                      }`}
+                    >
+                      {s.payment_status}
+                    </span>
+                    <span className="ml-auto text-xs text-muted-foreground">{photos.length} รูป</span>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                    {photos.map((url, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setLightbox({ url, sessionId: s.id, index: i })}
+                        className="relative aspect-square rounded-lg overflow-hidden bg-muted group"
+                      >
+                        <img
+                          src={url}
+                          alt={`photo ${i + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition"
+                          loading="lazy"
+                        />
+                        <span className="absolute top-1 left-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/60 text-white">
+                          {i + 1}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {s.output_url && (
+                    <a
+                      href={s.output_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-3 text-xs text-primary hover:underline"
+                    >
+                      <Download className="h-3 w-3" /> ดูรูปรวม (output)
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+      </section>
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div className="max-w-4xl max-h-full flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            <img src={lightbox.url} alt="" className="max-w-full max-h-[80vh] rounded-xl" />
+            <a
+              href={lightbox.url}
+              download={`${lightbox.sessionId.slice(0, 8)}-${lightbox.index + 1}.jpg`}
+              className="inline-flex items-center gap-2 h-11 px-5 rounded-full bg-primary text-primary-foreground font-semibold text-sm"
+            >
+              <Download className="h-4 w-4" /> ดาวน์โหลด
+            </a>
+          </div>
+        </div>
+      )}
 
 
       <section className="p-6 rounded-3xl bg-card border border-border">
