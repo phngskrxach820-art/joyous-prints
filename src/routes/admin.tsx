@@ -100,8 +100,26 @@ function Admin() {
   }
 
   useEffect(() => {
-    if (authed) fetchSessions();
+    if (authed) {
+      fetchSessions();
+      fetchGallery();
+    }
   }, [authed]);
+
+  async function fetchGallery() {
+    setGalleryLoading(true);
+    const { data } = await supabase
+      .from("sessions")
+      .select("id,created_at,layout,payment_status,photos,output_url")
+      .not("photos", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    const rows = ((data ?? []) as unknown as GallerySession[]).filter(
+      (r) => Array.isArray(r.photos) && r.photos.length > 0
+    );
+    setGallery(rows);
+    setGalleryLoading(false);
+  }
 
   function tryLogin() {
     if (pin === cfg.pin) setAuthed(true);
